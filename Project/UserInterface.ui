@@ -111,6 +111,9 @@ color: rgb(252, 233, 79);
      <property name="horizontalScrollBarPolicy">
       <enum>Qt::ScrollBarAlwaysOn</enum>
      </property>
+     <property name="lineWrapMode">
+      <enum>QPlainTextEdit::NoWrap</enum>
+     </property>
      <property name="readOnly">
       <bool>true</bool>
      </property>
@@ -119,6 +122,9 @@ color: rgb(252, 233, 79);
      </property>
      <property name="overwriteMode">
       <bool>true</bool>
+     </property>
+     <property name="tabStopWidth">
+      <number>80</number>
      </property>
      <property name="centerOnScroll">
       <bool>false</bool>
@@ -224,6 +230,9 @@ color: rgb(252, 233, 79);
        <height>31</height>
       </rect>
      </property>
+     <property name="lineWidth">
+      <number>2</number>
+     </property>
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
@@ -260,6 +269,9 @@ color: rgb(252, 233, 79);
        <width>16</width>
        <height>31</height>
       </rect>
+     </property>
+     <property name="lineWidth">
+      <number>2</number>
      </property>
      <property name="orientation">
       <enum>Qt::Vertical</enum>
