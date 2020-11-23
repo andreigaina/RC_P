@@ -1,6 +1,7 @@
 import socket
 import time
 
+_MDNS_PORT = 5353
 
 def current_time_millis():
     """Current system time in milliseconds"""
@@ -16,3 +17,4 @@ def new_socket():
     s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
     # Enable loopback
     s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+    s.bind(('', _MDNS_PORT))
