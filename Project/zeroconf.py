@@ -1,4 +1,6 @@
 import abc
+import logging
+
 from functions import *
 
 _MDNS_ADDR = '224.0.0.251'
@@ -26,6 +28,11 @@ _TYPES = {_TYPE_A: "a",
           _TYPE_SRV: "srv",
           _TYPE_ANY: "any"}
 
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
+
+if log.level == logging.NOTSET:
+    log.setLevel(logging.WARN)
 
 class DNSEntry:
     """*************** DNS Entry ****************"""
@@ -116,7 +123,7 @@ class DNSRecord(DNSEntry):
         self.ttl = self.moment
 
     @abc.abstractmethod
-    def write(self, out) -> str:
+    def write(self, out):
         pass
 
     def to_string(self, other_info=None, whatIsThis=None) -> str:
@@ -128,12 +135,26 @@ class DNSRecord(DNSEntry):
 
 
 class DNSAddress(DNSRecord):
-    def write(self, out) -> str:
-        pass
+    def __init__(self, name, type_, class_, ttl, address):
+        super().__init__(name, type_, class_, ttl)
+        self.address = address
+
+    def write(self, out):
+        out.write_string(self.address)
+
+    def __eq__(self, other):
+        return isinstance(other, DNSAddress) and self.address == other.address
+
+    def __repr__(self):
+        try:
+            return socket.inet_aton(self.address) #32 bit packed binary format
+        except Exception as e:
+            log.exception('Unknow error: %r', e)
+            return self.address
 
 
 class DNSPointer(DNSRecord):
-    def write(self, out) -> str:
+    def write(self, out):
         pass
 
 
