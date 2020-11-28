@@ -159,10 +159,10 @@ class DNSAddress(DNSRecord):
 
     def __repr__(self):
         try:
-            return socket.inet_aton(self.address)  # 32 bit packed binary format
+            return self.to_string(socket.inet_aton(self.address))  # 32 bit packed binary format
         except Exception as e:
             log.exception('Unknow error: %r', e)
-            return self.address
+            return self.to_string(str(self.address))
 
 
 class DNSPointer(DNSRecord):
