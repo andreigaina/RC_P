@@ -1,4 +1,5 @@
 import socket
+import struct
 import time
 
 _MDNS_PORT = 5353
@@ -14,7 +15,10 @@ def new_socket():
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     # Unrestricted in scope
-    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+    ttl = struct.pack(b'B', 255)
+    loop = struct.pack(b'B', 1)
+    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
     # Enable loopback
-    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+    s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, loop)
     s.bind(('', _MDNS_PORT))
+    return s
