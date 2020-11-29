@@ -5,6 +5,8 @@ from six import *
 from functions import *
 
 _MDNS_ADDR = '224.0.0.251'
+_MDNS_ADDR6 = 'ff02::fb'
+
 _MDNS_PORT = 5353
 _DNS_TTL = 60 * 60  # 1h
 _CLASS_IN = 1
@@ -13,6 +15,7 @@ _CLASS_MASK = 0x7FFF
 _CLASS_UNIQUE = 0X8000
 
 _TYPE_A = 1
+_TYPE_CNAME = 5
 _TYPE_PTR = 12
 _TYPE_TXT = 16
 _TYPE_AAAA = 28
@@ -20,6 +23,8 @@ _TYPE_SRV = 33
 _TYPE_ANY = 255
 
 _FLAGS_QR_QUERY = 0x0000  # query
+_FLAGS_QR_RESPONSE = 0x0000
+_FLAGS_QR_MASK = 0x8000
 
 _FLAGS_AA = 0x0400  # authorative answer
 
@@ -28,6 +33,7 @@ _FLAGS_AA = 0x0400  # authorative answer
 _CLASSES = {_CLASS_IN: "in",
             _CLASS_ANY: "any"}
 _TYPES = {_TYPE_A: "a",
+          _TYPE_CNAME: "cname",
           _TYPE_PTR: "ptr",
           _TYPE_TXT: "txt",
           _TYPE_AAAA: "4xa",
@@ -135,7 +141,7 @@ class DNSRecord(DNSEntry):
         self.ttl = self.moment
 
     @abc.abstractmethod
-    def write(self, out):
+    def write(self, out_):
         pass
 
     def to_string(self, other_info=None, whatIsThis=None) -> str:
@@ -151,8 +157,8 @@ class DNSAddress(DNSRecord):
         super().__init__(name, type_, class_, ttl)
         self.address = address
 
-    def write(self, out):
-        out.write_string(self.address)
+    def write(self, out_):
+        out_.write_string(self.address)
 
     def __eq__(self, other):
         return isinstance(other, DNSAddress) and self.address == other.address
@@ -161,7 +167,7 @@ class DNSAddress(DNSRecord):
         try:
             return self.to_string(socket.inet_aton(self.address))  # 32 bit packed binary format
         except Exception as e:
-            log.exception('Unknow error: %r', e)
+            log.exception('Unknown error: %r', e)
             return self.to_string(str(self.address))
 
 
@@ -170,8 +176,8 @@ class DNSPointer(DNSRecord):
         super().__init__(name, type_, class_, ttl)
         self.alias = alias
 
-    def write(self, out):
-        out.write_domain_name(self.alias)
+    def write(self, out_):
+        out_.write_domain_name(self.alias)
 
     def __eq__(self, other):
         return isinstance(other, DNSPointer) and self.alias == other.alias
@@ -186,8 +192,8 @@ class DNSText(DNSRecord):
         super().__init__(name, type_, class_, ttl)
         self.text = text
 
-    def write(self, out):
-        out.write_string(self.text)
+    def write(self, out_):
+        out_.write_string(self.text)
 
     def __eq__(self, other):
         return isinstance(other, DNSText) and self.text == other.text
@@ -204,11 +210,11 @@ class DNSService(DNSRecord):
         self.port = port
         self.server = server
 
-    def write(self, out):
-        out.write_short(self.priority)
-        out.write_short(self.weight)
-        out.write_short(self.port)
-        out.write_short(self.server)
+    def write(self, out_):
+        out_.write_short(self.priority)
+        out_.write_short(self.weight)
+        out_.write_short(self.port)
+        out_.write_short(self.server)
 
     def __eq__(self, other):
         return (isinstance(other, DNSService) and
@@ -254,9 +260,9 @@ class DNSOutgoing:
     def add_additional_answer(self, record):
         self.additionals.append(record)
 
-    def pack(self, format, value):
-        self.data.append(struct.pack(format, value))
-        self.size += struct.calcsize(format)
+    def pack(self, format_, value):
+        self.data.append(struct.pack(format_, value))
+        self.size += struct.calcsize(format_)
 
     def write_byte(self, value):
         self.pack(b'!c', int2byte(value))  # char
@@ -322,6 +328,8 @@ class DNSOutgoing:
         self.insert_short(index, length)
 
     def packet(self):
+        # SCHEMA: ID->FLAGS->NR_QUESTIONS->NR_ANSWERS->NR_AUTHORITIES->
+        # NR_ADDITIONALS->QUESTIONS->ANSWERS->AUTHORITIES->ADDTIONALS->0
         if not self.finished:
             self.finished = True
             for question in self.questions:
@@ -344,32 +352,173 @@ class DNSOutgoing:
                 self.insert_short(0, self.id)
         return b''.join(self.data)
 
+    def __repr__(self) -> str:
+        return '<DNSOutgoing:{%s}' % ''.join(
+            [
+                'multicast=%s, ' % self.id,
+                'flags=%s, ' % self.flags,
+                'questions=%s, ' % self.questions,
+                'answers=%s, ' % self.answers,
+                'authorities=%s, ' % self.authorities,
+                'additionals=%s, ' % self.additionals
+            ]
+        )
+
 
 class DNSIncoming:
-    pass
+    def __init__(self, data):
+        self.offset = 0
+        self.data = data
+        self.questions = []
+        self.answers = []
+        self.id = 0
+        self.flags = 0
+        self.nr_questions = 0
+        self.nr_answers = 0
+        self.nr_authorities = 0
+        self.nr_additionals = 0
+
+        self.read_header()
+        self.read_questions()
+        self.read_other_data()
+
+    def unpack(self, format_):
+        length = struct.calcsize(format_)
+        info = struct.unpack(format_, self.data[self.offset:self.offset + length])
+        self.offset += length
+        return info
+
+    def read_header(self):
+        (
+            self.id,
+            self.flags,
+            self.nr_questions,
+            self.nr_answers,
+            self.nr_authorities,
+            self.nr_additionals,
+        ) = self.unpack(b'!6H')
+
+    def read_int(self):
+        return self.unpack(b'!I')[0]
+
+    def read_unsigned_short(self):
+        return self.unpack(b'!H')[0]
+
+    def read_string(self, length):
+        info = self.data[self.offset:self.offset + length]
+        self.offset += length
+        return info
+
+    def read_character_string(self):
+        length = indexbytes(self.data, self.offset)
+        self.offset += 1
+        return self.read_string(length)
+
+    def is_query(self):
+        return (self.flags & _FLAGS_QR_MASK) == _FLAGS_QR_QUERY
+
+    def is_response(self):
+        return (self.flags & _FLAGS_QR_MASK) == _FLAGS_QR_RESPONSE
+
+    def read_utf8(self, offset, length):
+        return str(self.data[offset: offset + length], encoding='utf-8', errors='replace')
+
+    def read_domain_name(self):
+        result = ''
+        offset = self.offset
+        next_off = -1
+        first = offset
+        while True:
+            length = indexbytes(self.data, offset)
+            offset += 1
+            if length == 0:
+                break
+            t = length & 0xC0
+            if t == 0x00:
+                result = ''.join((result, self.read_utf8(offset, length) + '.'))
+                offset += length
+            elif t == 0xC0:
+                if next_off < 0:
+                    next_off = offset + 1
+                offset = ((length & 0x3F) << 8) | indexbytes(self.data, offset)  # Turn back to the domain name
+                if offset >= first:
+                    raise Exception("Bad domain name (circular) at %s!" % offset)
+                first = offset
+            else:
+                raise Exception("Bad domain name at %s" % offset)
+        if next_off >= 0:
+            self.offset = next_off
+        else:
+            self.offset = offset
+        return result
+
+    def read_questions(self):
+        for j in range(self.nr_questions):
+            name = self.read_domain_name()
+            type_, class_ = self.unpack(b'!HH')
+            question = DNSQuestion(name, type_, class_)
+            self.questions.append(question)
+
+    def read_other_data(self):
+        nr = self.nr_answers + self.nr_authorities + self.nr_additionals
+        for j in range(nr):
+            domain = self.read_domain_name()
+            type_, class_, ttl, length = self.unpack(b'!HHiH')
+            record = None
+            if type_ == _TYPE_A:
+                record = DNSAddress(domain, type_, class_, ttl, self.read_string(4))
+            elif type_ == _TYPE_CNAME or type_ == _TYPE_PTR:
+                record = DNSPointer(domain, type_, class_, ttl, self.read_domain_name())
+            elif type_ == _TYPE_TXT:
+                record = DNSText(domain, type_, class_, ttl, self.read_string(length))
+            elif type_ == _TYPE_SRV:
+                record = DNSService(domain, type_, class_, ttl, self.read_unsigned_short()
+                                    , self.read_unsigned_short(), self.read_unsigned_short(), self.read_domain_name())
+            elif type_ == _TYPE_AAAA:
+                record = DNSAddress(domain, type_, class_, ttl, self.read_string(16))  # ipV6
+            else:
+                self.offset += length
+            if record is not None:
+                self.answers.append(record)
+
+    def __repr__(self) -> str:
+        return '<DNSIncoming:{%s}' % ''.join(
+            [
+                'id=%s, ' % self.id,
+                'flags=%s, ' % self.flags,
+                'nr_q=%s, ' % self.nr_questions,
+                'nr_ans=%s, ' % self.nr_answers,
+                'nr_auth=%s, ' % self.nr_authorities,
+                'nr_add=%s, ' % self.nr_additionals,
+                'questions=%s, ' % self.questions,
+                'answers=%s, ' % self.answers
+            ]
+        )
 
 
 class ServiceBrowser:
     pass
 
 
-def send(out, addr=_MDNS_ADDR, port=_MDNS_PORT):
-    packet = out.packet()
+def send(out_, addr=_MDNS_ADDR, port=_MDNS_PORT):
+    packet = out_.packet()
     socket = new_socket()
     bytes_sent = socket.sendto(packet, (addr, port))
-    print(len(packet))
+    # print(len(packet))
     if bytes_sent != len(packet):
         raise Exception(
             'Sent %d out of %d bytes!' % (bytes_sent, len(packet)))
 
 
 if __name__ == '__main__':
+
     i = 0
+    out = DNSOutgoing(_FLAGS_QR_QUERY | _FLAGS_AA)
+
+    out.add_question(DNSQuestion("_http._tcp.local.", _TYPE_PTR, _CLASS_IN))
+    out.add_authorative_answer(
+        DNSPointer("_http._tcp.local.", _TYPE_PTR, _CLASS_IN, _DNS_TTL, "Paul's Test Web Site._http._tcp.local."))
     while i < 3:
-        out = DNSOutgoing(_FLAGS_QR_QUERY | _FLAGS_AA)
-        out.add_question(DNSQuestion("_http._tcp.local.", _TYPE_PTR, _CLASS_IN))
-        out.add_authorative_answer(
-            DNSPointer("_http._tcp.local.", _TYPE_PTR, _CLASS_IN, _DNS_TTL, "Paul's Test Web Site._http._tcp.local."))
         print(out.packet())
         send(out)
-        i += 3
+        i += 1
