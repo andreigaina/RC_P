@@ -48,16 +48,18 @@ if log.level == logging.NOTSET:
 
 
 class DNSEntry:
-    """*************** DNS Entry ****************"""
+    """Clasa de baza DNSEntry"""
 
     def __init__(self, name, type_, class_):
         self.key = name.lower()
         self.name = name
         self.type_ = type_
         self.class_ = class_ & _CLASS_MASK
+        """Raspunde un singur owner """
         self.unique = (class_ & _CLASS_UNIQUE) != 0
 
     def __eq__(self, other) -> bool:
+        """ Metoda ce verifica daca doua obiecte de tip DNSEntry au acelasi nume, tip si clasa"""
         return (isinstance(other, DNSEntry) and
                 self.name == other.name and
                 self.type_ == other.type_ and
@@ -66,17 +68,18 @@ class DNSEntry:
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
-    """****************Types and classes accessor***************"""
-
     @staticmethod
     def get_class(class_) -> str:
+        """Returnam tipul clasei sau un mesaj de err"""
         return _CLASSES.get(class_, "NotRecognisedClass(%s)" % class_)
 
     @staticmethod
     def get_type(type_) -> str:
+        """Returnam tipul inregistrarii sau un mesaj de err"""
         return _TYPES.get(type_, "NotRecognisedType(%s)" % type_)
 
     def to_string(self, other_info=None, whatIsThis=None) -> str:
+        """Metoda ce returneaza un string cu cu informatiile despre DSNEntry"""
         result = "%s[%s, %s, " % (whatIsThis, self.get_type(self.type_), self.get_class(self.class_))
         if self.unique:
             result += "-unique,"
@@ -91,23 +94,25 @@ class DNSEntry:
 
 
 class DNSQuestion(DNSEntry):
-    """*****************Question entry******************"""
+    """DNSQuestion"""
 
     def __init__(self, name, type_, class_):
         super().__init__(name, type_, class_)
 
     def answeredBy(self, record) -> bool:
+        """Se returneaza valoarea de adevar 1 daca raspunsul la o intrebare este dat de record"""
         return (self.class_ == record.class_ and
                 (self.type_ == record.type_ or
                  self.type_ == _TYPE_ANY) and
                 self.name == record.name)
 
     def __repr__(self) -> str:
+        """Reprezentare de tip string"""
         return super().to_string(whatIsThis="question")
 
 
 class DNSRecord(DNSEntry):
-    """**************Record with TIME TO LIVE(TTL)***************** """
+    """Record cu time to live(TTL)"""
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, name, type_, class_, ttl):
@@ -119,24 +124,31 @@ class DNSRecord(DNSEntry):
         return isinstance(other, DNSRecord) and DNSEntry.__eq__(self, other)
 
     def suppressed_by_answer(self, other) -> bool:
+        """Returneaza true daca o alta inregistrare are acelasi nume, acelasi tip, aceeasi clasa si TTL>self.ttl/2 """
         return self == other and other > (self.ttl / 2)
 
     def suppressed(self, msg) -> bool:
+        """Returneaza true daca un raspuns din oricare mesaj poate fi indeajuns pentru informatiile mentinute in
+        acest record """
         for record in msg.answers:
             if self.suppressed_by_answer(record):
                 return True
         return False
 
     def get_expiration_time(self):
+        """Returneaza momentul la care aceasta inregistrare va expira"""
         return self.moment + self.ttl * 1000  # milliseconds
 
     def get_remaining_TTL(self, now):
+        """Returneaza TTL-ul ramas"""
         return max(0, (self.get_expiration_time() - now) / 1000)  # seconds
 
     def is_expired(self, now) -> bool:
+        """Returneaza true daca a expirat acest record"""
         return self.get_expiration_time() <= now
 
     def reset_TTL(self, other):
+        """Resetam valoarea TTL-ului si a momentului crearii cu o alta valoarea a unui record mai recent"""
         self.moment = other.moment
         self.ttl = self.moment
 
@@ -145,6 +157,7 @@ class DNSRecord(DNSEntry):
         pass
 
     def to_string(self, other_info=None, whatIsThis=None) -> str:
+        """Reprezentarea de tip string la care putem adauga si alte informatii"""
         info = "%s/%s" % (self.ttl,
                           self.get_remaining_TTL(current_time_millis()))
         if other_info is not None:
@@ -153,17 +166,21 @@ class DNSRecord(DNSEntry):
 
 
 class DNSAddress(DNSRecord):
+    """DNSRecord de tip A(address)"""
     def __init__(self, name, type_, class_, ttl, address):
         super().__init__(name, type_, class_, ttl)
         self.address = address
 
     def write(self, out_):
+        """Metoda folosita la crearea pachetelor de iesire"""
         out_.write_string(self.address)
 
     def __eq__(self, other):
+        """Testam egalitatea"""
         return isinstance(other, DNSAddress) and self.address == other.address
 
     def __repr__(self):
+        """Reprezentare de tip string"""
         try:
             return self.to_string(socket.inet_aton(self.address))  # 32 bit packed binary format
         except Exception as e:
@@ -172,37 +189,46 @@ class DNSAddress(DNSRecord):
 
 
 class DNSPointer(DNSRecord):
+    """DNSRecord de tip PTR(pointer)"""
     def __init__(self, name, type_, class_, ttl, alias):
         super().__init__(name, type_, class_, ttl)
         self.alias = alias
 
     def write(self, out_):
+        """Metoda folosita la crearea pachetelor de iesire"""
         out_.write_domain_name(self.alias)
 
     def __eq__(self, other):
+        """Testam egalitatea"""
         return isinstance(other, DNSPointer) and self.alias == other.alias
 
     def __repr__(self):
+        """Reprezentare de tip string"""
         return self.to_string(self.alias)
 
 
 class DNSText(DNSRecord):
+    """DNSRecord de tip TXT(TEXT)"""
     def __init__(self, name, type_, class_, ttl, text):
         assert isinstance(text, (bytes, type(None)))
         super().__init__(name, type_, class_, ttl)
         self.text = text
 
     def write(self, out_):
+        """Metoda folosita la crearea pachetelor de iesire"""
         out_.write_string(self.text)
 
     def __eq__(self, other):
+        """Testam egalitatea"""
         return isinstance(other, DNSText) and self.text == other.text
 
     def __repr__(self):
+        """Reprezentare de tip string"""
         return self.to_string(self.text)
 
 
 class DNSService(DNSRecord):
+    """DNSRecord de tip SRV(SERVICE)"""
     def __init__(self, name, type_, class_, ttl, priority, weight, port, server):
         super().__init__(name, type_, class_, ttl)
         self.priority = priority
@@ -211,12 +237,14 @@ class DNSService(DNSRecord):
         self.server = server
 
     def write(self, out_):
+        """Metoda folosita la crearea pachetelor de iesire"""
         out_.write_short(self.priority)
         out_.write_short(self.weight)
         out_.write_short(self.port)
         out_.write_short(self.server)
 
     def __eq__(self, other):
+        """Testam egalitatea"""
         return (isinstance(other, DNSService) and
                 self.priority == other.priority and
                 self.weight == other.weight and
@@ -224,10 +252,12 @@ class DNSService(DNSRecord):
                 self.server == other.server)
 
     def __repr__(self):
+        """Reprezentare de tip string"""
         return self.to_string("%s:%s" % (self.server, self.port))
 
 
 class DNSOutgoing:
+    """Pachet de iesire(QUERY)"""
     def __init__(self, flags, multicast=True):
         self.finished = False
         self.id = 0
@@ -243,46 +273,58 @@ class DNSOutgoing:
         self.additionals = []
 
     def add_question(self, record):
+        """Punem o intrebare"""
         self.questions.append(record)
 
     def add_answer_at_time(self, record, now):
+        """Se pune in pachet un raspuns daca nu expira pentru o anumita perioada de timp"""
         if record is not None:
             if now == 0 or not record.is_expired(now):
                 self.answers.append((record, now))
 
     def add_answer(self, msg, record):
+        """Se pune un raspuns in pachet"""
         if not record.suppressed(msg):
             self.add_answer_at_time(record, 0)
 
-    def add_authorative_answer(self, record):
+    def add_authoritative_answer(self, record):
+        """Se pune un  raspuns autoritar """
         self.authorities.append(record)
 
     def add_additional_answer(self, record):
+        """Se pune un raspuns aditional """
         self.additionals.append(record)
 
     def pack(self, format_, value):
+        """Adaug un camp in pachet"""
         self.data.append(struct.pack(format_, value))
         self.size += struct.calcsize(format_)
 
     def write_byte(self, value):
+        """Scriu un byte in pachet(BIG ENDIAN)"""
         self.pack(b'!c', int2byte(value))  # char
 
     def insert_short(self, index, value):
+        """Scriu un unsigned short int la o anumita pozitie in pachet(BIG_ENDIAN)"""
         self.data.insert(index, struct.pack(b'!H', value))  # unsigned short
         self.size += 2
 
     def write_short(self, value):
+        """Scriu un unsigned short int in pachet(BIG_ENDIAN)"""
         self.pack(b'!H', value)
 
     def write_int(self, value):
+        """Scriu un unsigned int in pachet(BIG_ENDIAN)"""
         self.pack(b'!I', int(value))
 
     def write_string(self, value):
+        """Scriu un string in pachet"""
         assert isinstance(value, bytes)
         self.data.append(value)
         self.size += len(value)
 
     def write_utf8(self, string):
+        """Scriu un string si lungimea lui in pachet(BIG_ENDIAN)"""
         utf_string = string.encode('utf-8')
         length = len(utf_string)
         if length > 64:
@@ -291,6 +333,7 @@ class DNSOutgoing:
         self.write_string(utf_string)
 
     def write_domain_name(self, name):
+        """Scriu numele domeniului in pachet"""
         if name in self.names:
             index = self.names[name]
             self.write_byte((index >> 8) | 0xC0)
@@ -305,11 +348,13 @@ class DNSOutgoing:
             self.write_byte(0)
 
     def write_question(self, question):
+        """Scriu o intrebare in pachet"""
         self.write_domain_name(question.name)
         self.write_short(question.type_)
         self.write_short(question.class_)
 
     def write_record(self, record, now):
+        """Scriu un record(raspunst, raspuns autoritar, raspuns aditional) in pachet"""
         self.write_domain_name(record.name)
         self.write_short(record.type_)
         if record.unique and self.multicast:
@@ -328,6 +373,7 @@ class DNSOutgoing:
         self.insert_short(index, length)
 
     def packet(self):
+        """Impachetam informatiile"""
         # SCHEMA: ID->FLAGS->NR_QUESTIONS->NR_ANSWERS->NR_AUTHORITIES->
         # NR_ADDITIONALS->QUESTIONS->ANSWERS->AUTHORITIES->ADDTIONALS->0
         if not self.finished:
@@ -353,6 +399,7 @@ class DNSOutgoing:
         return b''.join(self.data)
 
     def __repr__(self) -> str:
+        """Reprezentarea de tip string"""
         return '<DNSOutgoing:{%s}' % ''.join(
             [
                 'multicast=%s, ' % self.id,
@@ -366,6 +413,7 @@ class DNSOutgoing:
 
 
 class DNSIncoming:
+    """"Pachet de intrare(RESPONSE)"""
     def __init__(self, data):
         self.offset = 0
         self.data = data
@@ -383,12 +431,14 @@ class DNSIncoming:
         self.read_other_data()
 
     def unpack(self, format_):
+        """Extragem o anumita informatie din pachet"""
         length = struct.calcsize(format_)
         info = struct.unpack(format_, self.data[self.offset:self.offset + length])
         self.offset += length
         return info
 
     def read_header(self):
+        """Citim header-ul pentru a afla informatiile necesare continuarii despachetarii"""
         (
             self.id,
             self.flags,
@@ -399,31 +449,39 @@ class DNSIncoming:
         ) = self.unpack(b'!6H')
 
     def read_int(self):
+        """Citim un unsigned int din pachet"""
         return self.unpack(b'!I')[0]
 
     def read_unsigned_short(self):
+        """Citim un unsigned short din pachet"""
         return self.unpack(b'!H')[0]
 
     def read_string(self, length):
+        """Citim un string de o anumita lungime din pachet"""
         info = self.data[self.offset:self.offset + length]
         self.offset += length
         return info
 
     def read_character_string(self):
+        """Citim un caracter din pachet"""
         length = indexbytes(self.data, self.offset)
         self.offset += 1
         return self.read_string(length)
 
     def is_query(self):
+        """Returneaza true daca este de tip query"""
         return (self.flags & _FLAGS_QR_MASK) == _FLAGS_QR_QUERY
 
     def is_response(self):
+        """Returneaza true daca este de tip response"""
         return (self.flags & _FLAGS_QR_MASK) == _FLAGS_QR_RESPONSE
 
     def read_utf8(self, offset, length):
+        """Citim un string de o anumita lungime si de la un anumit offset din pachet"""
         return str(self.data[offset: offset + length], encoding='utf-8', errors='replace')
 
     def read_domain_name(self):
+        """Citim numele domeniului"""
         result = ''
         offset = self.offset
         next_off = -1
@@ -453,6 +511,7 @@ class DNSIncoming:
         return result
 
     def read_questions(self):
+        """Citim intrebarile din pachet"""
         for j in range(self.nr_questions):
             name = self.read_domain_name()
             type_, class_ = self.unpack(b'!HH')
@@ -460,6 +519,7 @@ class DNSIncoming:
             self.questions.append(question)
 
     def read_other_data(self):
+        """Citim alte date din pachet(raspunsuri)"""
         nr = self.nr_answers + self.nr_authorities + self.nr_additionals
         for j in range(nr):
             domain = self.read_domain_name()
@@ -482,6 +542,7 @@ class DNSIncoming:
                 self.answers.append(record)
 
     def __repr__(self) -> str:
+        """Reprezentarea de tip string a pachetului"""
         return '<DNSIncoming:{%s}' % ''.join(
             [
                 'id=%s, ' % self.id,
@@ -516,8 +577,8 @@ if __name__ == '__main__':
     out = DNSOutgoing(_FLAGS_QR_QUERY | _FLAGS_AA)
 
     out.add_question(DNSQuestion("_http._tcp.local.", _TYPE_PTR, _CLASS_IN))
-    out.add_authorative_answer(
-        DNSPointer("_http._tcp.local.", _TYPE_PTR, _CLASS_IN, _DNS_TTL, "Paul's Test Web Site._http._tcp.local."))
+    #out.add_authoritative_answer(
+    #     DNSPointer("_http._tcp.local.", _TYPE_PTR, _CLASS_IN, _DNS_TTL, "Paul's Test Web Site._http._tcp.local."))
     while i < 3:
         print(out.packet())
         send(out)
