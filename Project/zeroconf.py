@@ -55,7 +55,7 @@ class DNSEntry:
         self.name = name
         self.type_ = type_
         self.class_ = class_ & _CLASS_MASK
-        """Raspunde un singur owner """
+        """Raspunde un singur owner"""
         self.unique = (class_ & _CLASS_UNIQUE) != 0
 
     def __eq__(self, other) -> bool:
@@ -79,7 +79,7 @@ class DNSEntry:
         return _TYPES.get(type_, "NotRecognisedType(%s)" % type_)
 
     def to_string(self, other_info=None, whatIsThis=None) -> str:
-        """Metoda ce returneaza un string cu cu informatiile despre DSNEntry"""
+        """Metoda ce returneaza un string cu informatiile despre DSNEntry"""
         result = "%s[%s, %s, " % (whatIsThis, self.get_type(self.type_), self.get_class(self.class_))
         if self.unique:
             result += "-unique,"
@@ -167,6 +167,7 @@ class DNSRecord(DNSEntry):
 
 class DNSAddress(DNSRecord):
     """DNSRecord de tip A(address)"""
+
     def __init__(self, name, type_, class_, ttl, address):
         super().__init__(name, type_, class_, ttl)
         self.address = address
@@ -190,6 +191,7 @@ class DNSAddress(DNSRecord):
 
 class DNSPointer(DNSRecord):
     """DNSRecord de tip PTR(pointer)"""
+
     def __init__(self, name, type_, class_, ttl, alias):
         super().__init__(name, type_, class_, ttl)
         self.alias = alias
@@ -209,6 +211,7 @@ class DNSPointer(DNSRecord):
 
 class DNSText(DNSRecord):
     """DNSRecord de tip TXT(TEXT)"""
+
     def __init__(self, name, type_, class_, ttl, text):
         assert isinstance(text, (bytes, type(None)))
         super().__init__(name, type_, class_, ttl)
@@ -229,6 +232,7 @@ class DNSText(DNSRecord):
 
 class DNSService(DNSRecord):
     """DNSRecord de tip SRV(SERVICE)"""
+
     def __init__(self, name, type_, class_, ttl, priority, weight, port, server):
         super().__init__(name, type_, class_, ttl)
         self.priority = priority
@@ -258,6 +262,7 @@ class DNSService(DNSRecord):
 
 class DNSOutgoing:
     """Pachet de iesire(QUERY)"""
+
     def __init__(self, flags, multicast=True):
         self.finished = False
         self.id = 0
@@ -414,6 +419,7 @@ class DNSOutgoing:
 
 class DNSIncoming:
     """"Pachet de intrare(RESPONSE)"""
+
     def __init__(self, data):
         self.offset = 0
         self.data = data
@@ -577,7 +583,7 @@ if __name__ == '__main__':
     out = DNSOutgoing(_FLAGS_QR_QUERY | _FLAGS_AA)
 
     out.add_question(DNSQuestion("_http._tcp.local.", _TYPE_PTR, _CLASS_IN))
-    #out.add_authoritative_answer(
+    # out.add_authoritative_answer(
     #     DNSPointer("_http._tcp.local.", _TYPE_PTR, _CLASS_IN, _DNS_TTL, "Paul's Test Web Site._http._tcp.local."))
     while i < 3:
         print(out.packet())
