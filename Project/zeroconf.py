@@ -563,6 +563,85 @@ class DNSIncoming:
         )
 
 
+class ServiceInfo:
+    def __init__(self, type_, name: str, address=None, port=None, weight=0, priority=0, properties=None, server=None):
+        if not name.endswith(type_):
+            raise Exception("Bad type name!")
+        self.type_ = type_
+        self.name = name
+        self.address = address
+        self.port = port
+        self.weight = weight
+        self.priority = priority
+        if server:
+            self.server = server
+        else:
+            self.server = name
+        self._set_properties(properties)
+
+    def _set_properties(self, properties):
+        if isinstance(properties, dict):
+            self._properties = properties
+            list_ = []
+            result = b''
+            for key in properties:
+                value = properties[key]
+                if isinstance(key, text_type):
+                    key = key.encode('utf-8')
+                if value is not None:
+                    if not isinstance(value, bytes):
+                        value = str(value).encode('utf-8')
+                list_.append(b'='.join((key, value)))
+            for item in list_:
+                result = b''.join((result, int2byte(len(item)), item))
+            self.text = result
+        else:
+            self.text = properties
+
+    def _set_text(self, text):
+        self.text = text
+        result = {}
+        end = len(text)
+        index = 0
+        values = []
+        while index < end:
+            length = indexbytes(text, index)
+            values.append(text[index:index+length])
+            index += length+1  # lungimea inregistrarii + octetul care retinea lungimea inregistrarii
+
+        for v in values:
+            try:
+                key, value = v.split(b'=', 1)
+            except Exception as e:
+                log.exception('Unknown error, possibly: %r', e)
+                key = v
+                value = False
+            if key and result.get(key) is None:
+                result[key] = value
+        self._properties = result
+
+    def get_name(self):
+        if self.type_ is not None and self.name.endswith("." + self.type_):
+            return self.name[:len(self.name)-len(self.type_)-1]
+        return self.name
+
+    def update_record(self, zerocfg, now, record):
+        if record is not None and not record.is_expired(now):
+            if record.type_ == _TYPE_A:
+                if record.name == self.server:
+                    self.address = record.address
+                elif record.type == _TYPE_SRV:
+                    if record.type == _TYPE_SRV:
+                        self.server = record.server
+                        self.port = record.port
+                        self.weight = record.weight
+                        self.priority = record.priority
+                        #--------------
+                elif record.type == _TYPE_TXT:
+                    if record.name == self.name:
+                        self._set_text(record.text)
+
+
 class ServiceBrowser:
     pass
 
