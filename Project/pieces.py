@@ -8,6 +8,7 @@ from six import *
 from functions import *
 
 _GLOBAL_DONE = False
+_MAX_MSG_ABSOLUTE = 8972
 
 _MDNS_ADDR = '224.0.0.251'
 _MDNS_ADDR6 = 'ff02::fb'
@@ -630,6 +631,26 @@ class Reaper(threading.Thread):
                     self.zeroconf.update_record(now, record)
                     self.zeroconf.cache.remove(record)
 
+
+class Listener:
+    def __init__(self, zeroconf):
+        self.zeroconf = zeroconf
+
+    def handle_read(self, socket_):
+        try:
+            data, (addr, port) = socket_.recvfrom(_MAX_MSG_ABSOLUTE)
+        except socket.error as err:
+            if err.errno == socket.EBADF:
+                return
+            else:
+                raise err
+        self.data = data
+        msg = DNSIncoming(data)
+        if msg.is_query():
+            if port == _MDNS_PORT:
+                self.zeroconf.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
+        else:
+            self.zeroconf.handle_response(msg)
 
 
 class ServiceInfo:
