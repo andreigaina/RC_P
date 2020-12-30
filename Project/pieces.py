@@ -1,10 +1,13 @@
 import abc
 import logging
+import threading
 from functools import reduce
 
 from six import *
 
 from functions import *
+
+_GLOBAL_DONE = False
 
 _MDNS_ADDR = '224.0.0.251'
 _MDNS_ADDR6 = 'ff02::fb'
@@ -609,6 +612,26 @@ class DNSCache:
             return []
 
 
+class Reaper(threading.Thread):
+    def __init__(self, zeroconf):
+        super().__init__()
+        self.daemon = True
+        self.zeroconf = zeroconf
+        self.start()
+
+    def run(self):
+        while True:
+            self.zeroconf.wait(10*1000)
+            if _GLOBAL_DONE:
+                return
+            now = current_time_millis()
+            for record in self.zeroconf.cache.entries():
+                if record.is_expired(now):
+                    self.zeroconf.update_record(now, record)
+                    self.zeroconf.cache.remove(record)
+
+
+
 class ServiceInfo:
     def __init__(self, type_, name: str, address=None, port=None, weight=0, priority=0, properties=None, server=None):
         if not name.endswith(type_):
@@ -652,8 +675,8 @@ class ServiceInfo:
         values = []
         while index < end:
             length = indexbytes(text, index)
-            values.append(text[index:index+length])
-            index += length+1  # lungimea inregistrarii + octetul care retinea lungimea inregistrarii
+            values.append(text[index:index + length])
+            index += length + 1  # lungimea inregistrarii + octetul care retinea lungimea inregistrarii
 
         for v in values:
             try:
@@ -668,7 +691,7 @@ class ServiceInfo:
 
     def get_name(self):
         if self.type_ is not None and self.name.endswith("." + self.type_):
-            return self.name[:len(self.name)-len(self.type_)-1]
+            return self.name[:len(self.name) - len(self.type_) - 1]
         return self.name
 
     def update_record(self, zerocfg, now, record):
@@ -682,9 +705,10 @@ class ServiceInfo:
                         self.port = record.port
                         self.weight = record.weight
                         self.priority = record.priority
-                        #--------------
+                        # --------------
                         self.update_record(zerocfg, now, zerocfg.cache.get_by_details(self.server, _TYPE_A, _CLASS_IN))
-                        self.update_record(zerocfg, now, zerocfg.cache.get_by_details(self.server, _TYPE_AAAA, _CLASS_IN))
+                        self.update_record(zerocfg, now,
+                                           zerocfg.cache.get_by_details(self.server, _TYPE_AAAA, _CLASS_IN))
                 elif record.type == _TYPE_TXT:
                     if record.name == self.name:
                         self._set_text(record.text)
@@ -694,7 +718,7 @@ class ServiceInfo:
         delay = _LISTENER_TIME
         next = now + delay
         last = now + timeout
-        result = False
+
         try:
             zerocfg.add_listener(self, DNSQuestion(self.name, _TYPE_ANY, _CLASS_IN))
             while self.server is None or self.address is None or self.text is None:
@@ -781,5 +805,5 @@ if __name__ == '__main__':
     lol = {"hello": ["gdbye"]}
     list_ = lol["hello"]
     list_.append("hjhj")
-    #list_.remove("gdbye")
+    # list_.remove("gdbye")
     print(list_)
