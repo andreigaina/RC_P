@@ -13,7 +13,7 @@ class MainWindow(QMainWindow):
         print(ui_path)
         loadUi(ui_path, self)
         self.file_path = None
-        self.outputDisplay.appendPlainText("ndsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdsssss")
+        # self.outputDisplay.appendPlainText("ndsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdsssss")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
