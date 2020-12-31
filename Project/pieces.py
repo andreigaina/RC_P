@@ -13,10 +13,12 @@ _MAX_MSG_ABSOLUTE = 8972
 _CHECK_TIME = 175
 _REGISTER_TIME = 225
 _UNREGISTER_TIME = 125
+_BROWSER_TIME = 500
 
 _MDNS_ADDR = '224.0.0.251'
 _MDNS_ADDR6 = 'ff02::fb'
 
+_DNS_PORT = 53
 _MDNS_PORT = 5353
 _DNS_TTL = 60 * 60  # 1h
 _CLASS_IN = 1
@@ -33,7 +35,7 @@ _TYPE_SRV = 33
 _TYPE_ANY = 255
 
 _FLAGS_QR_QUERY = 0x0000  # query
-_FLAGS_QR_RESPONSE = 0x0000
+_FLAGS_QR_RESPONSE = 0x8000
 _FLAGS_QR_MASK = 0x8000
 
 _FLAGS_AA = 0x0400  # authorative answer
@@ -110,7 +112,7 @@ class DNSQuestion(DNSEntry):
     def __init__(self, name, type_, class_):
         super().__init__(name, type_, class_)
 
-    def answeredBy(self, record) -> bool:
+    def answered_by(self, record) -> bool:
         """Se returneaza valoarea de adevar 1 daca raspunsul la o intrebare este dat de record"""
         return (self.class_ == record.class_ and
                 (self.type_ == record.type_ or
@@ -146,22 +148,24 @@ class DNSRecord(DNSEntry):
                 return True
         return False
 
-    def get_expiration_time(self):
+    def get_expiration_time(self, percent):
         """Returneaza momentul la care aceasta inregistrare va expira"""
-        return self.moment + self.ttl * 1000  # milliseconds
+
+        return self.moment + (percent * self.ttl * 10)  # milliseconds
 
     def get_remaining_TTL(self, now):
         """Returneaza TTL-ul ramas"""
-        return max(0, (self.get_expiration_time() - now) / 1000)  # seconds
+        #print(self.get_expiration_time(100))
+        return max(0, (self.get_expiration_time(100) - now) / 1000)  # seconds
 
     def is_expired(self, now) -> bool:
         """Returneaza true daca a expirat acest record"""
-        return self.get_expiration_time() <= now
+        return self.get_expiration_time(100) <= now
 
     def reset_TTL(self, other):
         """Resetam valoarea TTL-ului si a momentului crearii cu o alta valoarea a unui record mai recent"""
         self.moment = other.moment
-        self.ttl = self.moment
+        self.ttl = other.ttl
 
     @abc.abstractmethod
     def write(self, out_):
@@ -256,7 +260,7 @@ class DNSService(DNSRecord):
         out_.write_short(self.priority)
         out_.write_short(self.weight)
         out_.write_short(self.port)
-        out_.write_short(self.server)
+        out_.write_domain_name(self.server)
 
     def __eq__(self, other):
         """Testam egalitatea"""
@@ -380,7 +384,8 @@ class DNSOutgoing:
         if now == 0:
             self.write_int(record.ttl)
         else:
-            self.write_int(record.get_remaining_ttl(now))
+            #print("record.ttl=%s"%record.ttl)
+            self.write_int(record.get_remaining_TTL(now))
         index = len(self.data)
         self.size += 2
         record.write(self)
@@ -398,6 +403,7 @@ class DNSOutgoing:
                 self.write_question(question)
             for answer, time_ in self.answers:
                 self.write_record(answer, time_)
+
             for authority in self.authorities:
                 self.write_record(authority, 0)
             for additional in self.additionals:
@@ -585,7 +591,7 @@ class DNSCache:
         try:
             list__ = self.cache[entry.key]
             list__.remove(entry)
-            if not list_:
+            if not list__:
                 del self.cache[entry.key]
         except (KeyError, ValueError):
             pass
@@ -593,10 +599,13 @@ class DNSCache:
     def get(self, entry):
         try:
             list__ = self.cache[entry.key]
+            '''
             for cached_entry in reversed(list__):
                 if entry.__eq__(cached_entry):
                     return cached_entry
             return None
+            '''
+            return list__[list__.index(entry)]
         except (KeyError, ValueError):
             return None
 
@@ -626,7 +635,7 @@ class Reaper(threading.Thread):
 
     def run(self):
         while True:
-            self.zeroconf.wait(10*1000)
+            self.zeroconf.wait(10 * 1000)
             if _GLOBAL_DONE:
                 return
             now = current_time_millis()
@@ -654,7 +663,7 @@ class Engine(threading.Thread):
     def get_readers(self):
         with self.condition:
             result = self.readers.keys()
-            self.condition.notify()
+            # self.condition.notify()
         return result
 
     def delete_reader(self, socket_):
@@ -703,6 +712,10 @@ class Listener:
         if msg.is_query():
             if port == _MDNS_PORT:
                 self.zeroconf.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
+                # TODO FOR UNICAST
+            elif port == _DNS_PORT:
+                self.zeroconf.handle_query(msg, addr, port)
+                self.zeroconf.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
         else:
             self.zeroconf.handle_response(msg)
 
@@ -721,7 +734,12 @@ class ServiceInfo:
             self.server = server
         else:
             self.server = name
+        self._properties = None
         self._set_properties(properties)
+
+    @property
+    def properties(self):
+        return self._properties
 
     def _set_properties(self, properties):
         if isinstance(properties, dict):
@@ -744,25 +762,30 @@ class ServiceInfo:
 
     def _set_text(self, text):
         self.text = text
-        result = {}
-        end = len(text)
-        index = 0
-        values = []
-        while index < end:
-            length = indexbytes(text, index)
-            values.append(text[index:index + length])
-            index += length + 1  # lungimea inregistrarii + octetul care retinea lungimea inregistrarii
+        try:
+            result = {}
+            end = len(text)
+            index = 0
+            values = []
+            while index < end:
+                length = indexbytes(text, index)
+                index += 1
+                values.append(text[index:index + length])
+                index += length   # lungimea inregistrarii + octetul care retinea lungimea inregistrarii
 
-        for v in values:
-            try:
-                key, value = v.split(b'=', 1)
-            except Exception as e:
-                log.exception('Unknown error, possibly: %r', e)
-                key = v
-                value = False
-            if key and result.get(key) is None:
-                result[key] = value
-        self._properties = result
+            for v in values:
+                try:
+                    key, value = v.split(b'=', 1)
+                except Exception as e:
+                    log.exception('Unknown error, possibly: %r', e)
+                    key = v
+                    value = False
+                if key and result.get(key) is None:
+                    result[key] = value
+            self._properties = result
+        except Exception as e:  # TODO stop catching all Exceptions
+            log.exception('Unknown error, possibly benign: %r', e)
+            self._properties = None
 
     def get_name(self):
         if self.type_ is not None and self.name.endswith("." + self.type_):
@@ -782,8 +805,8 @@ class ServiceInfo:
                         self.priority = record.priority
                         # --------------
                         self.update_record(zerocfg, now, zerocfg.cache.get_by_details(self.server, _TYPE_A, _CLASS_IN))
-                        self.update_record(zerocfg, now,
-                                           zerocfg.cache.get_by_details(self.server, _TYPE_AAAA, _CLASS_IN))
+                        '''self.update_record(zerocfg, now,
+                                           zerocfg.cache.get_by_details(self.server, _TYPE_AAAA, _CLASS_IN))'''
                 elif record.type == _TYPE_TXT:
                     if record.name == self.name:
                         self._set_text(record.text)
@@ -801,6 +824,7 @@ class ServiceInfo:
                 if last <= now:
                     return False
                 if next <= now:
+                    '''
                     out = DNSOutgoing(_FLAGS_QR_QUERY)
                     cached_entry = zerocfg.cache.get_by_details(self.name, _TYPE_SRV, _CLASS_IN)
                     if not cached_entry:
@@ -819,11 +843,28 @@ class ServiceInfo:
                         if not cached_entry:
                             out.add_question(DNSQuestion(self.server, _TYPE_AAAA, _CLASS_IN))
                             out.add_answer_at_time(cached_entry, now)
+                    '''
+                    out = DNSOutgoing(_FLAGS_QR_QUERY)
+                    out.add_question(DNSQuestion(self.name, _TYPE_SRV,
+                                                 _CLASS_IN))
+                    out.add_answer_at_time(zerocfg.cache.get_by_details(self.name,
+                                                                        _TYPE_SRV, _CLASS_IN), now)
+                    out.add_question(DNSQuestion(self.name, _TYPE_TXT,
+                                                 _CLASS_IN))
+                    out.add_answer_at_time(zerocfg.cache.get_by_details(self.name,
+                                                                        _TYPE_TXT, _CLASS_IN), now)
+                    if self.server is not None:
+                        out.add_question(DNSQuestion(self.server,
+                                                     _TYPE_A, _CLASS_IN))
+                        out.add_answer_at_time(zerocfg.cache.get_by_details(self.server,
+                                                                            _TYPE_A, _CLASS_IN), now)
+
                     zerocfg.send(out)
                     next = now + delay
                     delay *= 2
                 zerocfg.wait(min(next, last) - now)
                 now = current_time_millis()
+
         finally:
             zerocfg.remove_listener(self)
         return True
@@ -833,12 +874,16 @@ class ServiceInfo:
             return other.name == self.name
         return False
 
+    def __ne__(self, other):
+        """Non-equality test"""
+        return not self.__eq__(other)
+
     def __repr__(self):
         return '%s(%s)' % (
             type(self).__name__,
             ', '.join(
                 '%s=%r' % (name, getattr(self, name))
-                for name in ('type',
+                for name in ('type_',
                              'name',
                              'address',
                              'port',
@@ -847,12 +892,73 @@ class ServiceInfo:
                              'server',
                              'properties',
                              )
-            ),
+            )
         )
 
 
-class ServiceBrowser:
-    pass
+class ServiceBrowser(threading.Thread):
+    def __init__(self, zeroconf, type_, listener):
+        super().__init__()
+        self.daemon = True
+        self.zeroconf = zeroconf
+        self.type_ = type_
+        self.listener = listener
+        self.services = {}
+        self.next_time = current_time_millis()
+        self.delay = _BROWSER_TIME
+        self.list = []
+        self.done = False
+        self.zeroconf.add_listener(self, DNSQuestion(self.type_, _TYPE_PTR, _CLASS_IN))
+        self.start()
+
+    def update_record(self, zc, now, record):
+        if record.type_ == _TYPE_PTR and record.name == self.type_:
+            expired = record.is_expired(now)
+            try:
+                oldrecord = self.services[record.alias.lower()]
+                if not expired:
+                    oldrecord.reset_TTL(record)
+                else:
+                    del (self.services[record.alias.lower()])
+                    callback = lambda x: self.listener.remove_service(x, self.type_, record.alias)
+                    self.list.append(callback)
+                    return
+            except Exception as e:
+                log.exception('Unknown error:%r', e)
+                if not expired:
+                    self.services[record.alias.lower()] = record
+                    callback = lambda x: self.listener.add_service(x, self.type_, record.alias)
+                    self.list.append(callback)
+            expires = record.get_expiration_time(75)
+            if expires < self.next_time:
+                self.next_time = expires
+
+    def cancel(self):
+        self.done = True
+        self.zeroconf.notify_all()
+
+    def run(self):
+        while True:
+            event = None
+            now = current_time_millis()
+            if len(self.list) == 0 and self.next_time > now:
+                self.zeroconf.wait(self.next_time - now)
+            if _GLOBAL_DONE or self.done:
+                return
+            now = current_time_millis()
+            if self.next_time <= now:
+                out = DNSOutgoing(_FLAGS_QR_QUERY)
+                out.add_question(DNSQuestion(self.type_, _TYPE_PTR, _CLASS_IN))
+                for record in self.services.values():
+                    if not record.is_expired(now):
+                        out.add_answer_at_time(record, now)
+                self.zeroconf.send(out)
+                self.next_time = now + self.delay
+                self.delay = min(20 * 1000, self.delay * 2)
+            if len(self.list) > 0:
+                event = self.list.pop(0)
+            if event is not None:
+                event(self.zeroconf)
 
 
 def send(out_, addr=_MDNS_ADDR, port=_MDNS_PORT):
@@ -866,7 +972,6 @@ def send(out_, addr=_MDNS_ADDR, port=_MDNS_PORT):
 
 
 if __name__ == '__main__':
-    '''
     i = 0
     out = DNSOutgoing(_FLAGS_QR_QUERY | _FLAGS_AA)
 
@@ -877,9 +982,3 @@ if __name__ == '__main__':
         print(out.packet())
         send(out)
         i += 1
-    '''
-    lol = {"hello": ["gdbye"]}
-    list_ = lol["hello"]
-    list_.append("hjhj")
-    # list_.remove("gdbye")
-    print(list_)
