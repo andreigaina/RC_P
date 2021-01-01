@@ -5,13 +5,13 @@ from pieces import *
 
 
 class Zeroconf:
-    def __init__(self):
-
+    def __init__(self, interfaces=InterfaceChoice.Default):
+        pieces._GLOBAL_DONE = False
         self._listen_socket = new_socket()
-        interfaces = ['0.0.0.0']
+        interfaces = normalize_interface_choice(interfaces, socket.AF_INET)
 
         self._respond_sockets = []
-        pieces._GLOBAL_DONE = False
+
         for i in interfaces:
             self._listen_socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
                                            socket.inet_aton(pieces._MDNS_ADDR) + socket.inet_aton(i))
@@ -59,7 +59,7 @@ class Zeroconf:
     def send(self, out_, addr=pieces._MDNS_ADDR, port=pieces._MDNS_PORT):
         packet = out_.packet()
         for socket_ in self._respond_sockets:
-            bytes_sent = socket_.sendto(packet, 0, (addr, port))
+            bytes_sent = socket_.sendto(packet,  (addr, port))
             # print(len(packet))
             if bytes_sent != len(packet):
                 raise Exception(
@@ -249,16 +249,16 @@ class Zeroconf:
                     if not service:
                         continue
 
-                    if question.type in (pieces._TYPE_SRV, pieces._TYPE_ANY):
+                    if question.type_ in (pieces._TYPE_SRV, pieces._TYPE_ANY):
                         out.add_answer(msg, DNSService(question.name,
                                                        pieces._TYPE_SRV, pieces._CLASS_IN | pieces._CLASS_UNIQUE,
                                                        pieces._DNS_TTL, service.priority, service.weight,
                                                        service.port, service.server))
-                    if question.type in (pieces._TYPE_TXT, pieces._TYPE_ANY):
+                    if question.type_ in (pieces._TYPE_TXT, pieces._TYPE_ANY):
                         out.add_answer(msg, DNSText(question.name,
                                                     pieces._TYPE_TXT, pieces._CLASS_IN | pieces._CLASS_UNIQUE,
                                                     pieces._DNS_TTL, service.text))
-                    if question.type == pieces._TYPE_SRV:
+                    if question.type_ == pieces._TYPE_SRV:
                         out.add_additional_answer(DNSAddress(service.server,
                                                              pieces._TYPE_A, pieces._CLASS_IN | pieces._CLASS_UNIQUE,
                                                              pieces._DNS_TTL, service.address))
@@ -291,10 +291,10 @@ class ZeroconfServiceTypes:
             cls,
             zc=None,
             timeout: Union[int, float] = 5,
-            interfaces=['0.0.0.0'],
+            interfaces=InterfaceChoice.All,
             ip_version=None):
         if zc is None:
-            local_zc = Zeroconf()
+            local_zc = Zeroconf(interfaces=interfaces)
         else:
             local_zc = zc
         listener = cls()
@@ -319,14 +319,13 @@ if __name__ == '__main__':
                        desc, "ash-2.local.")
 
     zeroconf = Zeroconf()
-    print(info)
     print("Registration of a service...")
     zeroconf.register_service(info)
-    service_types = ZeroconfServiceTypes.find(timeout=5)
+    service_types = ZeroconfServiceTypes.find(timeout=0.5)
     print(service_types)
     try:
         input("Waiting (press Enter to exit)...")
     finally:
-        print("Unregistering...")
+        print("\nUnregistering...")
         zeroconf.unregister_service(info)
         zeroconf.close()

@@ -150,12 +150,10 @@ class DNSRecord(DNSEntry):
 
     def get_expiration_time(self, percent):
         """Returneaza momentul la care aceasta inregistrare va expira"""
-
         return self.moment + (percent * self.ttl * 10)  # milliseconds
 
     def get_remaining_TTL(self, now):
         """Returneaza TTL-ul ramas"""
-        #print(self.get_expiration_time(100))
         return max(0, (self.get_expiration_time(100) - now) / 1000)  # seconds
 
     def is_expired(self, now) -> bool:
@@ -384,7 +382,6 @@ class DNSOutgoing:
         if now == 0:
             self.write_int(record.ttl)
         else:
-            #print("record.ttl=%s"%record.ttl)
             self.write_int(record.get_remaining_TTL(now))
         index = len(self.data)
         self.size += 2
@@ -622,6 +619,7 @@ class DNSCache:
     def entries_with_name(self, name):
         try:
             return self.cache[name]
+
         except KeyError:
             return []
 
@@ -771,7 +769,7 @@ class ServiceInfo:
                 length = indexbytes(text, index)
                 index += 1
                 values.append(text[index:index + length])
-                index += length   # lungimea inregistrarii + octetul care retinea lungimea inregistrarii
+                index += length  # lungimea inregistrarii + octetul care retinea lungimea inregistrarii
 
             for v in values:
                 try:
@@ -794,22 +792,25 @@ class ServiceInfo:
 
     def update_record(self, zerocfg, now, record):
         if record is not None and not record.is_expired(now):
+
             if record.type_ == _TYPE_A:
                 if record.name == self.server:
                     self.address = record.address
-                elif record.type == _TYPE_SRV:
-                    if record.name == self.name:
-                        self.server = record.server
-                        self.port = record.port
-                        self.weight = record.weight
-                        self.priority = record.priority
-                        # --------------
-                        self.update_record(zerocfg, now, zerocfg.cache.get_by_details(self.server, _TYPE_A, _CLASS_IN))
-                        '''self.update_record(zerocfg, now,
-                                           zerocfg.cache.get_by_details(self.server, _TYPE_AAAA, _CLASS_IN))'''
-                elif record.type == _TYPE_TXT:
-                    if record.name == self.name:
-                        self._set_text(record.text)
+            elif record.type_ == _TYPE_SRV:
+                if record.name == self.name:
+                    self.server = record.server
+                    self.port = record.port
+                    self.weight = record.weight
+                    self.priority = record.priority
+
+                    # --------------
+                    self.update_record(zerocfg, now, zerocfg.cache.get_by_details(self.server, _TYPE_A, _CLASS_IN))
+                    '''self.update_record(zerocfg, now,
+                                       zerocfg.cache.get_by_details(self.server, _TYPE_AAAA, _CLASS_IN))'''
+            elif record.type_ == _TYPE_TXT:
+
+                if record.name == self.name:
+                    self._set_text(record.text)
 
     def request(self, zerocfg, timeout):
         """Returneaza TRUE daca serviciul a fost gasit si se face update """
@@ -819,10 +820,13 @@ class ServiceInfo:
         last = now + timeout
 
         try:
+
             zerocfg.add_listener(self, DNSQuestion(self.name, _TYPE_ANY, _CLASS_IN))
+
             while self.server is None or self.address is None or self.text is None:
                 if last <= now:
                     return False
+                # print(zerocfg.cache.cache)
                 if next <= now:
                     '''
                     out = DNSOutgoing(_FLAGS_QR_QUERY)
