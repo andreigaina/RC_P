@@ -7,9 +7,11 @@ import netifaces
 
 _MDNS_PORT = 5353
 
+
 def current_time_millis():
     """Current system time in milliseconds"""
     return time.time() * 1000
+
 
 @enum.unique
 class InterfaceChoice(enum.Enum):
@@ -31,6 +33,7 @@ def normalize_interface_choice(choice, address_family):
     elif choice is InterfaceChoice.All:
         choice = get_all_addresses(address_family)
     return choice
+
 
 def new_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

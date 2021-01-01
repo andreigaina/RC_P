@@ -226,6 +226,7 @@ class Zeroconf:
                         out.add_answer(msg,
                                        DNSPointer("_services._dns-sd._udp.local.",
                                                   pieces._TYPE_PTR, pieces._CLASS_IN, pieces._DNS_TTL, serv_type))
+
                 for service in self.services.values():
                     if question.name == service.type_:
                         if out is None:
@@ -312,17 +313,19 @@ class ZeroconfServiceTypes:
 
 
 if __name__ == '__main__':
-    desc = {'path': '/~paulsm/'}
-    info = ServiceInfo("_http._tcp.local.",
-                       "Paul's Test Web Site._http._tcp.local.",
-                       socket.inet_aton("10.0.1.2"), 80, 0, 0,
-                       desc, "ash-2.local.")
-
+    desc = {'path': '/~home/'}
+    info = ServiceInfo("_xxxx._udp.local.",
+                       "Popescu._xxxx._udp.local.",
+                       socket.inet_aton("192.0.1.2"), 666, 4, 2,
+                       desc, "pop.local.")
+    info2 = ServiceInfo("_http._tcp.local.",
+                       "Andrei._http._tcp.local.",
+                       socket.inet_aton("13.0.1.5"), 90, 0, 0,
+                       desc, "ix.local.")
     zeroconf = Zeroconf()
     print("Registration of a service...")
     zeroconf.register_service(info)
-    service_types = ZeroconfServiceTypes.find(timeout=0.5)
-    print(service_types)
+    zeroconf.register_service(info2)
     try:
         input("Waiting (press Enter to exit)...")
     finally:

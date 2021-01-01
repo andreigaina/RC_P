@@ -828,7 +828,7 @@ class ServiceInfo:
                     return False
                 # print(zerocfg.cache.cache)
                 if next <= now:
-                    '''
+
                     out = DNSOutgoing(_FLAGS_QR_QUERY)
                     cached_entry = zerocfg.cache.get_by_details(self.name, _TYPE_SRV, _CLASS_IN)
                     if not cached_entry:
@@ -862,7 +862,7 @@ class ServiceInfo:
                                                      _TYPE_A, _CLASS_IN))
                         out.add_answer_at_time(zerocfg.cache.get_by_details(self.server,
                                                                             _TYPE_A, _CLASS_IN), now)
-
+'''
                     zerocfg.send(out)
                     next = now + delay
                     delay *= 2
@@ -976,6 +976,7 @@ def send(out_, addr=_MDNS_ADDR, port=_MDNS_PORT):
 
 
 if __name__ == '__main__':
+    '''
     i = 0
     out = DNSOutgoing(_FLAGS_QR_QUERY | _FLAGS_AA)
 
@@ -986,3 +987,5 @@ if __name__ == '__main__':
         print(out.packet())
         send(out)
         i += 1
+    '''
+    pass
