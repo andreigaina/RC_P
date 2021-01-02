@@ -1,12 +1,16 @@
-from typing import Union
 
-import pieces
-from pieces import *
+from listener import *
+from dnscache import *
+from reaper import *
+from wrapper import *
+from serviceInfo import *
+from serviceBrowser import *
+from queryTypes import *
 
 
 class Zeroconf:
     def __init__(self, interfaces=InterfaceChoice.Default):
-        pieces._GLOBAL_DONE = False
+        queryTypes._GLOBAL_DONE = False
         self._listen_socket = new_socket()
         interfaces = normalize_interface_choice(interfaces, socket.AF_INET)
 
@@ -14,7 +18,7 @@ class Zeroconf:
 
         for i in interfaces:
             self._listen_socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
-                                           socket.inet_aton(pieces._MDNS_ADDR) + socket.inet_aton(i))
+                                           socket.inet_aton(queryTypes._MDNS_ADDR) + socket.inet_aton(i))
 
             respond_socket = new_socket()
             respond_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(i))
@@ -56,7 +60,7 @@ class Zeroconf:
         self.remove_service_listener(listener)
         self.browsers.append(ServiceBrowser(self, type_, listener))
 
-    def send(self, out_, addr=pieces._MDNS_ADDR, port=pieces._MDNS_PORT):
+    def send(self, out_, addr=queryTypes._MDNS_ADDR, port=queryTypes._MDNS_PORT):
         packet = out_.packet()
         for socket_ in self._respond_sockets:
             bytes_sent = socket_.sendto(packet,  (addr, port))
@@ -73,7 +77,7 @@ class Zeroconf:
         i = 0
         while i < 3:
             for record in self.cache.entries_with_name(info.type_):
-                if record.type_ == pieces._TYPE_PTR and not record.is_expired(now) and record.alias == info.name:
+                if record.type_ == queryTypes._TYPE_PTR and not record.is_expired(now) and record.alias == info.name:
                     if not allow_name_change:
                         raise Exception("NonUniqueNameException")
                     info.name = '%s-%s.%s' % (instance_name, next_instance_number, info.type_)
@@ -86,16 +90,16 @@ class Zeroconf:
                 now = current_time_millis()
                 continue
 
-            out = DNSOutgoing(pieces._FLAGS_QR_QUERY | pieces._FLAGS_AA)
+            out = DNSOutgoing(queryTypes._FLAGS_QR_QUERY | queryTypes._FLAGS_AA)
             self.debug = out
-            out.add_question(DNSQuestion(info.type_, pieces._TYPE_PTR, pieces._CLASS_IN))
-            out.add_authoritative_answer(DNSPointer(info.type_, pieces._TYPE_PTR, pieces._CLASS_IN,
-                                                    pieces._DNS_TTL, info.name))
+            out.add_question(DNSQuestion(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN))
+            out.add_authoritative_answer(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN,
+                                                    queryTypes._DNS_TTL, info.name))
             self.send(out)
             i += 1
-            next_time += pieces._CHECK_TIME
+            next_time += queryTypes._CHECK_TIME
 
-    def register_service(self, info, ttl=pieces._DNS_TTL):
+    def register_service(self, info, ttl=queryTypes._DNS_TTL):
         self.check_service(info)
         self.services[info.name.lower()] = info
         if info.type_ in self.servicetypes:
@@ -110,17 +114,17 @@ class Zeroconf:
                 self.wait(next_time - now)
                 now = current_time_millis()
                 continue
-            out = DNSOutgoing(pieces._FLAGS_QR_RESPONSE | pieces._FLAGS_AA)
-            out.add_answer_at_time(DNSPointer(info.type_, pieces._TYPE_PTR, pieces._CLASS_IN, ttl, info.name), 0)
-            out.add_answer_at_time(DNSService(info.name, pieces._TYPE_SRV, pieces._CLASS_IN, ttl, info.priority,
+            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+            out.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, ttl, info.name), 0)
+            out.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, ttl, info.priority,
                                               info.weight, info.port, info.server), 0)
-            out.add_answer_at_time(DNSText(info.name, pieces._TYPE_TXT, pieces._CLASS_IN, ttl, info.text), 0)
+            out.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, ttl, info.text), 0)
             if info.address:
-                out.add_answer_at_time(DNSAddress(info.server, pieces._TYPE_A, pieces._CLASS_IN, ttl, info.address), 0)
+                out.add_answer_at_time(DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, ttl, info.address), 0)
 
             self.send(out)
             i += 1
-            next_time += pieces._REGISTER_TIME
+            next_time += queryTypes._REGISTER_TIME
 
     def unregister_service(self, info):
         try:
@@ -139,16 +143,16 @@ class Zeroconf:
                 self.wait(next_time - now)
                 now = current_time_millis()
                 continue
-            out = DNSOutgoing(pieces._FLAGS_QR_RESPONSE | pieces._FLAGS_AA)
-            out.add_answer_at_time(DNSPointer(info.type_, pieces._TYPE_PTR, pieces._CLASS_IN, 0, info.name), 0)
-            out.add_answer_at_time(DNSService(info.name, pieces._TYPE_SRV, pieces._CLASS_IN, 0, info.priority,
+            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+            out.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, 0, info.name), 0)
+            out.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, 0, info.priority,
                                               info.weight, info.port, info.server), 0)
-            out.add_answer_at_time(DNSText(info.name, pieces._TYPE_TXT, pieces._CLASS_IN, 0, info.text), 0)
+            out.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, 0, info.text), 0)
             if info.address:
-                out.add_answer_at_time(DNSAddress(info.server, pieces._TYPE_A, pieces._CLASS_IN, 0, info.address), 0)
+                out.add_answer_at_time(DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, 0, info.address), 0)
             self.send(out)
             i += 1
-            next_time += pieces._UNREGISTER_TIME
+            next_time += queryTypes._UNREGISTER_TIME
 
     def unregister_all_services(self):
         if len(self.services) > 0:
@@ -160,18 +164,18 @@ class Zeroconf:
                     self.wait(next_time - now)
                     now = current_time_millis()
                     continue
-                out = DNSOutgoing(pieces._FLAGS_QR_RESPONSE | pieces._FLAGS_AA)
+                out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
                 for info in self.services.values():
-                    out.add_answer_at_time(DNSPointer(info.type_, pieces._TYPE_PTR, pieces._CLASS_IN, 0, info.name), 0)
-                    out.add_answer_at_time(DNSService(info.name, pieces._TYPE_SRV, pieces._CLASS_IN, 0, info.priority,
+                    out.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, 0, info.name), 0)
+                    out.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, 0, info.priority,
                                                       info.weight, info.port, info.server), 0)
-                    out.add_answer_at_time(DNSText(info.name, pieces._TYPE_TXT, pieces._CLASS_IN, 0, info.text), 0)
+                    out.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, 0, info.text), 0)
                     if info.address:
                         out.add_answer_at_time(
-                            DNSAddress(info.server, pieces._TYPE_A, pieces._CLASS_IN, 0, info.address), 0)
+                            DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, 0, info.address), 0)
                 self.send(out)
                 i += 1
-                next_time += pieces._UNREGISTER_TIME
+                next_time += queryTypes._UNREGISTER_TIME
 
     def update_record(self, now, record):
         for listener in self.listeners:
@@ -212,57 +216,57 @@ class Zeroconf:
 
     def handle_query(self, msg, addr, port):
         out = None
-        if port != pieces._MDNS_PORT:
-            out = DNSOutgoing(pieces._FLAGS_QR_RESPONSE | pieces._FLAGS_AA, False)
+        if port != queryTypes._MDNS_PORT:
+            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA, False)
             for question in msg.questions:
                 out.add_question(question)
 
         for question in msg.questions:
-            if question.type_ == pieces._TYPE_PTR:
+            if question.type_ == queryTypes._TYPE_PTR:
                 if question.name == "_services._dns-sd._udp.local.":
                     for serv_type in self.servicetypes.keys():
                         if out is None:
-                            out = DNSOutgoing(pieces._FLAGS_QR_RESPONSE | pieces._FLAGS_AA)
+                            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
                         out.add_answer(msg,
                                        DNSPointer("_services._dns-sd._udp.local.",
-                                                  pieces._TYPE_PTR, pieces._CLASS_IN, pieces._DNS_TTL, serv_type))
+                                                  queryTypes._TYPE_PTR, queryTypes._CLASS_IN, queryTypes._DNS_TTL, serv_type))
 
                 for service in self.services.values():
                     if question.name == service.type_:
                         if out is None:
-                            out = DNSOutgoing(pieces._FLAGS_QR_RESPONSE | pieces._FLAGS_AA)
+                            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
                         out.add_answer(msg,
                                        DNSPointer(service.type_,
-                                                  pieces._TYPE_PTR, pieces._CLASS_IN, pieces._DNS_TTL, service.name))
+                                                  queryTypes._TYPE_PTR, queryTypes._CLASS_IN, queryTypes._DNS_TTL, service.name))
             else:
                 try:
                     if out is None:
-                        out = DNSOutgoing(pieces._FLAGS_QR_RESPONSE | pieces._FLAGS_AA)
-                    if question.type_ in (pieces._TYPE_A, pieces._TYPE_ANY):
+                        out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+                    if question.type_ in (queryTypes._TYPE_A, queryTypes._TYPE_ANY):
                         for service in self.services.values():
                             if service.server == question.name.lower():
                                 out.add_answer(msg,
                                                DNSAddress(question.name,
-                                                          pieces._TYPE_A, pieces._CLASS_IN | pieces._CLASS_UNIQUE,
-                                                          pieces._DNS_TTL,
+                                                          queryTypes._TYPE_A, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
+                                                          queryTypes._DNS_TTL,
                                                           service.address))
                     service = self.services.get(question.name.lower(), None)
                     if not service:
                         continue
 
-                    if question.type_ in (pieces._TYPE_SRV, pieces._TYPE_ANY):
+                    if question.type_ in (queryTypes._TYPE_SRV, queryTypes._TYPE_ANY):
                         out.add_answer(msg, DNSService(question.name,
-                                                       pieces._TYPE_SRV, pieces._CLASS_IN | pieces._CLASS_UNIQUE,
-                                                       pieces._DNS_TTL, service.priority, service.weight,
+                                                       queryTypes._TYPE_SRV, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
+                                                       queryTypes._DNS_TTL, service.priority, service.weight,
                                                        service.port, service.server))
-                    if question.type_ in (pieces._TYPE_TXT, pieces._TYPE_ANY):
+                    if question.type_ in (queryTypes._TYPE_TXT, queryTypes._TYPE_ANY):
                         out.add_answer(msg, DNSText(question.name,
-                                                    pieces._TYPE_TXT, pieces._CLASS_IN | pieces._CLASS_UNIQUE,
-                                                    pieces._DNS_TTL, service.text))
-                    if question.type_ == pieces._TYPE_SRV:
+                                                    queryTypes._TYPE_TXT, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
+                                                    queryTypes._DNS_TTL, service.text))
+                    if question.type_ == queryTypes._TYPE_SRV:
                         out.add_additional_answer(DNSAddress(service.server,
-                                                             pieces._TYPE_A, pieces._CLASS_IN | pieces._CLASS_UNIQUE,
-                                                             pieces._DNS_TTL, service.address))
+                                                             queryTypes._TYPE_A, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
+                                                             queryTypes._DNS_TTL, service.address))
 
                 except Exception as e:
                     log.exception('Unknown error: %r', e)
@@ -271,45 +275,13 @@ class Zeroconf:
             self.send(out, addr, port)
 
     def close(self):
-        if not pieces._GLOBAL_DONE:
-            pieces._GLOBAL_DONE = True
+        if not queryTypes._GLOBAL_DONE:
+            queryTypes._GLOBAL_DONE = True
             self.notify_all()
             self.engine.notify()
             self.unregister_all_services()
             for socket_ in [self._listen_socket] + self._respond_sockets:
                 socket_.close()
-
-
-class ZeroconfServiceTypes:
-    def __init__(self) -> None:
-        self.found_services = set()
-
-    def add_service(self, zc, type_, name):
-        self.found_services.add(name)
-
-    @classmethod
-    def find(
-            cls,
-            zc=None,
-            timeout: Union[int, float] = 5,
-            interfaces=InterfaceChoice.All,
-            ip_version=None):
-        if zc is None:
-            local_zc = Zeroconf(interfaces=interfaces)
-        else:
-            local_zc = zc
-        listener = cls()
-        browser = ServiceBrowser(local_zc, '_services._dns-sd._udp.local.', listener=listener)
-        # wait for responses
-        time.sleep(timeout)
-
-        # close down anything we opened
-        if zc is None:
-            local_zc.close()
-        else:
-            browser.cancel()
-
-        return tuple(sorted(listener.found_services))
 
 
 if __name__ == '__main__':
@@ -319,9 +291,9 @@ if __name__ == '__main__':
                        socket.inet_aton("192.0.1.2"), 666, 4, 2,
                        desc, "pop.local.")
     info2 = ServiceInfo("_http._tcp.local.",
-                       "Andrei._http._tcp.local.",
-                       socket.inet_aton("13.0.1.5"), 90, 0, 0,
-                       desc, "ix.local.")
+                        "Andrei._http._tcp.local.",
+                        socket.inet_aton("13.0.1.5"), 90, 0, 0,
+                        desc, "ix.local.")
     zeroconf = Zeroconf()
     print("Registration of a service...")
     zeroconf.register_service(info)

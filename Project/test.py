@@ -1,5 +1,6 @@
+from serviceBrowser import ServiceBrowser
 from zeroconf import Zeroconf
-from pieces import *
+from queryTypes import *
 
 
 class MyListener(object):
