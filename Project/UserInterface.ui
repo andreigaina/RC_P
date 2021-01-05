@@ -53,31 +53,6 @@
     <property name="styleSheet">
      <string notr="true">background:rgb(52, 101, 164)</string>
     </property>
-    <widget class="QListView" name="serviceTypesBox">
-     <property name="geometry">
-      <rect>
-       <x>70</x>
-       <y>30</y>
-       <width>256</width>
-       <height>192</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="toolTipDuration">
-      <number>-6</number>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background:rgb(238, 238, 236);</string>
-     </property>
-     <property name="verticalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOn</enum>
-     </property>
-     <property name="horizontalScrollBarPolicy">
-      <enum>Qt::ScrollBarAsNeeded</enum>
-     </property>
-    </widget>
     <widget class="QPlainTextEdit" name="outputDisplay">
      <property name="geometry">
       <rect>
@@ -137,88 +112,20 @@ color: rgb(252, 233, 79);
       </color>
      </property>
     </widget>
-    <widget class="QLabel" name="labelServiceTypes">
+    <widget class="QPushButton" name="searchAllButton">
      <property name="geometry">
       <rect>
-       <x>150</x>
-       <y>0</y>
-       <width>101</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <strikeout>false</strikeout>
-      </font>
-     </property>
-     <property name="text">
-      <string>ServiceTypes</string>
-     </property>
-     <property name="openExternalLinks">
-      <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="Line" name="line">
-     <property name="geometry">
-      <rect>
-       <x>120</x>
-       <y>0</y>
-       <width>16</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <weight>50</weight>
-       <bold>false</bold>
-      </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true"/>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Sunken</enum>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="Line" name="line_2">
-     <property name="geometry">
-      <rect>
-       <x>260</x>
-       <y>0</y>
-       <width>16</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="searchButton">
-     <property name="geometry">
-      <rect>
-       <x>338</x>
-       <y>50</y>
-       <width>91</width>
-       <height>161</height>
+       <x>200</x>
+       <y>71</y>
+       <width>111</width>
+       <height>41</height>
       </rect>
      </property>
      <property name="autoFillBackground">
       <bool>false</bool>
      </property>
      <property name="text">
-      <string>SEARCH</string>
+      <string>SEARCH ALL</string>
      </property>
     </widget>
     <widget class="Line" name="line_3">
@@ -280,8 +187,8 @@ color: rgb(252, 233, 79);
     <widget class="QLineEdit" name="ipAddress">
      <property name="geometry">
       <rect>
-       <x>520</x>
-       <y>590</y>
+       <x>90</x>
+       <y>390</y>
        <width>311</width>
        <height>25</height>
       </rect>
@@ -302,8 +209,8 @@ color: rgb(252, 233, 79);
     <widget class="Line" name="line_5">
      <property name="geometry">
       <rect>
-       <x>600</x>
-       <y>560</y>
+       <x>180</x>
+       <y>360</y>
        <width>16</width>
        <height>31</height>
       </rect>
@@ -318,8 +225,8 @@ color: rgb(252, 233, 79);
     <widget class="QLabel" name="labelIpAddress">
      <property name="geometry">
       <rect>
-       <x>630</x>
-       <y>560</y>
+       <x>200</x>
+       <y>360</y>
        <width>101</width>
        <height>20</height>
       </rect>
@@ -342,8 +249,8 @@ color: rgb(252, 233, 79);
     <widget class="Line" name="line_6">
      <property name="geometry">
       <rect>
-       <x>740</x>
-       <y>560</y>
+       <x>310</x>
+       <y>360</y>
        <width>16</width>
        <height>31</height>
       </rect>
@@ -358,8 +265,8 @@ color: rgb(252, 233, 79);
     <widget class="QLabel" name="labelHostName">
      <property name="geometry">
       <rect>
-       <x>150</x>
-       <y>230</y>
+       <x>210</x>
+       <y>261</y>
        <width>101</width>
        <height>20</height>
       </rect>
@@ -382,8 +289,8 @@ color: rgb(252, 233, 79);
     <widget class="QLineEdit" name="hostName">
      <property name="geometry">
       <rect>
-       <x>70</x>
-       <y>260</y>
+       <x>130</x>
+       <y>291</y>
        <width>251</width>
        <height>25</height>
       </rect>
@@ -401,10 +308,10 @@ color: rgb(252, 233, 79);
     <widget class="Line" name="line_13">
      <property name="geometry">
       <rect>
-       <x>120</x>
-       <y>210</y>
+       <x>180</x>
+       <y>251</y>
        <width>20</width>
-       <height>51</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="lineWidth">
@@ -417,235 +324,10 @@ color: rgb(252, 233, 79);
     <widget class="Line" name="line_14">
      <property name="geometry">
       <rect>
-       <x>250</x>
-       <y>199</y>
-       <width>20</width>
-       <height>61</height>
-      </rect>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelOldHost">
-     <property name="geometry">
-      <rect>
-       <x>140</x>
-       <y>440</y>
-       <width>111</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <strikeout>false</strikeout>
-      </font>
-     </property>
-     <property name="text">
-      <string>OLD HostName</string>
-     </property>
-     <property name="textInteractionFlags">
-      <set>Qt::NoTextInteraction</set>
-     </property>
-    </widget>
-    <widget class="QLineEdit" name="oldHostName">
-     <property name="geometry">
-      <rect>
-       <x>70</x>
-       <y>470</y>
-       <width>251</width>
-       <height>25</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(211, 215, 207);</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-     <property name="clearButtonEnabled">
-      <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="Line" name="line_15">
-     <property name="geometry">
-      <rect>
-       <x>120</x>
-       <y>420</y>
-       <width>20</width>
-       <height>51</height>
-      </rect>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="Line" name="line_16">
-     <property name="geometry">
-      <rect>
-       <x>250</x>
-       <y>420</y>
-       <width>20</width>
-       <height>51</height>
-      </rect>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelNewHost">
-     <property name="geometry">
-      <rect>
-       <x>130</x>
-       <y>500</y>
-       <width>121</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <strikeout>false</strikeout>
-      </font>
-     </property>
-     <property name="text">
-      <string>  NEW HostName</string>
-     </property>
-     <property name="textInteractionFlags">
-      <set>Qt::NoTextInteraction</set>
-     </property>
-    </widget>
-    <widget class="QLineEdit" name="newHostName">
-     <property name="geometry">
-      <rect>
-       <x>70</x>
-       <y>530</y>
-       <width>251</width>
-       <height>25</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(211, 215, 207);</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-     <property name="clearButtonEnabled">
-      <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="Line" name="line_17">
-     <property name="geometry">
-      <rect>
-       <x>120</x>
-       <y>490</y>
+       <x>310</x>
+       <y>250</y>
        <width>20</width>
        <height>41</height>
-      </rect>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="Line" name="line_18">
-     <property name="geometry">
-      <rect>
-       <x>250</x>
-       <y>490</y>
-       <width>20</width>
-       <height>41</height>
-      </rect>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelService">
-     <property name="geometry">
-      <rect>
-       <x>140</x>
-       <y>330</y>
-       <width>101</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <strikeout>false</strikeout>
-      </font>
-     </property>
-     <property name="text">
-      <string>        Service</string>
-     </property>
-     <property name="textInteractionFlags">
-      <set>Qt::NoTextInteraction</set>
-     </property>
-    </widget>
-    <widget class="QLineEdit" name="serviceName">
-     <property name="geometry">
-      <rect>
-       <x>70</x>
-       <y>360</y>
-       <width>251</width>
-       <height>25</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(211, 215, 207);</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-     <property name="clearButtonEnabled">
-      <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="Line" name="line_19">
-     <property name="geometry">
-      <rect>
-       <x>120</x>
-       <y>330</y>
-       <width>16</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="lineWidth">
-      <number>2</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-    </widget>
-    <widget class="Line" name="line_20">
-     <property name="geometry">
-      <rect>
-       <x>250</x>
-       <y>330</y>
-       <width>16</width>
-       <height>31</height>
       </rect>
      </property>
      <property name="lineWidth">
@@ -658,9 +340,9 @@ color: rgb(252, 233, 79);
     <widget class="QPushButton" name="getIPButton">
      <property name="geometry">
       <rect>
-       <x>120</x>
-       <y>290</y>
-       <width>141</width>
+       <x>170</x>
+       <y>321</y>
+       <width>161</width>
        <height>41</height>
       </rect>
      </property>
@@ -671,75 +353,109 @@ color: rgb(252, 233, 79);
     <widget class="QPushButton" name="addServiceButton">
      <property name="geometry">
       <rect>
-       <x>80</x>
-       <y>390</y>
-       <width>101</width>
+       <x>100</x>
+       <y>480</y>
+       <width>121</width>
        <height>41</height>
       </rect>
      </property>
      <property name="text">
-      <string>ADD</string>
+      <string>ADD Service</string>
      </property>
     </widget>
     <widget class="QPushButton" name="removeServiceButton">
      <property name="geometry">
       <rect>
-       <x>210</x>
-       <y>390</y>
-       <width>101</width>
+       <x>260</x>
+       <y>480</y>
+       <width>131</width>
        <height>41</height>
       </rect>
      </property>
      <property name="text">
-      <string>REMOVE</string>
+      <string>REMOVE Service</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="editHostNameButton">
+    <widget class="QComboBox" name="serviceTypesBox">
      <property name="geometry">
       <rect>
-       <x>140</x>
-       <y>570</y>
-       <width>101</width>
+       <x>160</x>
+       <y>161</y>
+       <width>191</width>
+       <height>25</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="searchSelectedType">
+     <property name="geometry">
+      <rect>
+       <x>170</x>
+       <y>211</y>
+       <width>171</width>
        <height>41</height>
       </rect>
      </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
      <property name="text">
-      <string>EDIT</string>
+      <string>SEARCH Selected Type</string>
      </property>
     </widget>
-    <zorder>line_17</zorder>
-    <zorder>line_18</zorder>
-    <zorder>labelNewHost</zorder>
-    <zorder>line_15</zorder>
-    <zorder>line_16</zorder>
-    <zorder>line_19</zorder>
-    <zorder>line_20</zorder>
+    <widget class="QLabel" name="labelHostName_2">
+     <property name="geometry">
+      <rect>
+       <x>210</x>
+       <y>131</y>
+       <width>101</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <italic>false</italic>
+       <bold>true</bold>
+       <strikeout>false</strikeout>
+      </font>
+     </property>
+     <property name="text">
+      <string>ServiceTypes</string>
+     </property>
+     <property name="textInteractionFlags">
+      <set>Qt::NoTextInteraction</set>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="servicesBox">
+     <property name="geometry">
+      <rect>
+       <x>90</x>
+       <y>440</y>
+       <width>311</width>
+       <height>25</height>
+      </rect>
+     </property>
+    </widget>
     <zorder>line_13</zorder>
     <zorder>line_14</zorder>
     <zorder>line_5</zorder>
     <zorder>line_6</zorder>
     <zorder>line_3</zorder>
     <zorder>line_4</zorder>
-    <zorder>line_2</zorder>
-    <zorder>line</zorder>
-    <zorder>serviceTypesBox</zorder>
     <zorder>outputDisplay</zorder>
-    <zorder>labelServiceTypes</zorder>
-    <zorder>searchButton</zorder>
+    <zorder>searchAllButton</zorder>
     <zorder>labelOutput</zorder>
     <zorder>ipAddress</zorder>
     <zorder>labelIpAddress</zorder>
     <zorder>labelHostName</zorder>
     <zorder>hostName</zorder>
-    <zorder>labelOldHost</zorder>
-    <zorder>oldHostName</zorder>
-    <zorder>newHostName</zorder>
-    <zorder>labelService</zorder>
-    <zorder>serviceName</zorder>
     <zorder>getIPButton</zorder>
     <zorder>addServiceButton</zorder>
     <zorder>removeServiceButton</zorder>
-    <zorder>editHostNameButton</zorder>
+    <zorder>serviceTypesBox</zorder>
+    <zorder>searchSelectedType</zorder>
+    <zorder>labelHostName_2</zorder>
+    <zorder>servicesBox</zorder>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
