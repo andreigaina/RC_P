@@ -2,6 +2,7 @@ import os
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.uic import loadUi
+from ServiceTypes_find import *
 
 
 class MainWindow(QMainWindow):
@@ -15,6 +16,9 @@ class MainWindow(QMainWindow):
         self.file_path = None
         self.registerServicePopUp = RegisterServicePopUp(self)
         self.addServiceButton.clicked.connect(self.registerServicePopUp.show)
+        self.connections = Connections(self)
+        self.searchAllButton.clicked.connect(self.connections.find_ServiceTypes)
+        self.searchSelectedType.clicked.connect(self.connections.search_SelectedType)
         # self.outputDisplay.appendPlainText("ndsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdsssss")
 
 
@@ -50,6 +54,37 @@ class RegisterServicePopUp(QDialog):
 
     def __repr__(self):
         return "STUDENTI"
+
+
+class MyListener(object):
+    def __init__(self, mainWindow):
+        self.mainWindow = mainWindow
+        self.string = ""
+
+    def remove_service(self, zeroconf, type, name):
+        self.string += ("Service %s removed\n" % (name,))
+        self.string += ('\n')
+
+    def add_service(self, zeroconf, type, name):
+        self.string += "Service %s added\n" % (name,)
+        self.string += ("    Type is %s\n" % (type,))
+        info = zeroconf.get_service_info(type, name)
+        if info:
+            self.string += ("    Address is %s:%d\n" % (socket.inet_ntoa(info.address),
+                                                     info.port))
+            self.string += ("    Weight is %d,\n    Priority is %d\n" % (info.weight,
+                                                                 info.priority))
+            self.string += ("    Server is %s\n" % info.server)
+            if info.properties:
+                self.string += "    Properties are\n"
+                for key, value in info.properties.items():
+                    self.string += ("\t%s: %s\n" % (key, value))
+        else:
+            self.string += "    No info!\n"
+        self.string += '\n'
+
+
+
 
 
 if __name__ == '__main__':
