@@ -12,17 +12,18 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         ui_path = os.path.join(self.ROOT_DIR, 'UserInterface.ui')
-        print(ui_path)
         loadUi(ui_path, self)
         self.file_path = None
         self.serviceTypesBox.addItem("None")
         self.registerServicePopUp = RegisterServicePopUp(self)
+        self.errPopUp = EroarePopUp(self)
+        self.errPopUp.okButton.clicked.connect(self.errPopUp.delete_close)
         self.addServiceButton.clicked.connect(self.registerServicePopUp.show)
         self.connections = Connections(self)
         self.searchAllButton.clicked.connect(self.connections.find_ServiceTypes)
         self.searchSelectedType.clicked.connect(self.connections.search_SelectedType)
         self.getIPButton.clicked.connect(self.connections.get_IPaddress)
-        # self.outputDisplay.appendPlainText("ndsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdsssss")
+        self.registerServicePopUp.registerButton.clicked.connect(self.connections.verify_register)
 
 
 class RegisterServicePopUp(QDialog):
@@ -55,8 +56,23 @@ class RegisterServicePopUp(QDialog):
                 return obj.isSignalConnected(method)
         return False
 
+
+class EroarePopUp(QDialog):
+    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+        self.ui_path = os.path.join(self.ROOT_DIR, 'eroarePopUp.ui')
+        loadUi(self.ui_path, self)
+        self.file_path = None
+        self.okButton.clicked.connect(self.delete_close)
+
+    def delete_close(self):
+        self.eroareEdit.clear()
+        self.close()
+
     def __repr__(self):
-        return "STUDENTI"
+        return "EROARE"
 
 
 class MyBrowserListener:
@@ -96,8 +112,9 @@ class MyListenerHNResolver:
 
     def add_service(self, zeroconf, type, name):
         info = zeroconf.get_service_info(type, name)
-
         if info:
+            print(self.hostName)
+            print(name)
             if self.hostName == name:
                 self.string += ("%s" % (socket.inet_ntoa(info.address)))
         else:
@@ -107,6 +124,7 @@ class MyListenerHNResolver:
 class Connections:
     def __init__(self, mainWindow):
         self.mainWindow = mainWindow
+        self.zeroconf = None
 
     def find_ServiceTypes(self):
         service_types = ZeroconfServiceTypes.find(timeout=0.5)
@@ -121,30 +139,90 @@ class Connections:
     def search_SelectedType(self):
         type_ = self.mainWindow.serviceTypesBox.currentText()
         if type_ != "None":
-            self.mainWindow.searchSelectedType.setEnabled(False)
+
             zeroconf = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Browsing services . . . :")
             listener = MyBrowserListener()
             browser = ServiceBrowser(zeroconf, type_, listener)
             time.sleep(3)
-            zeroconf.close()
-            browser.cancel()
+            #zeroconf.close()
+            #browser.cancel()
             self.mainWindow.outputDisplay.appendPlainText(listener.string)
-        self.mainWindow.searchSelectedType.setEnabled(True)
+        else:
+            self.mainWindow.errPopUp.show()
+            self.mainWindow.errPopUp.eroareEdit.setPlainText("\t\tAtentie!\n"
+                                                             "\tNu ati selectat un tip de serviciu.")
+        # self.mainWindow.searchSelectedType.setEnabled(True)
 
     def get_IPaddress(self):
         hostName = self.mainWindow.hostName.text()
         if hostName != "":
-            zeroconf = Zeroconf()
+            if self.zeroconf is None:
+                zeroconf = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Resolving hostname . . . :")
             listener = MyListenerHNResolver(hostName)
             type_ = re.sub("^[^.]+", '', hostName)
             type_ = type_[1:]
             browser = ServiceBrowser(zeroconf, type_, listener)
             time.sleep(3)
-            zeroconf.close()
-            browser.cancel()
+            #zeroconf.close()
+            #browser.cancel()
             self.mainWindow.ipAddress.setText(listener.string)
+            self.mainWindow.outputDisplay.appendPlainText("\t"+listener.string)
+        else:
+            self.mainWindow.errPopUp.show()
+            self.mainWindow.errPopUp.eroareEdit.setPlainText("\t\tAtentie!\n"
+                                                             "\tCamp gol.")
+
+    def verify_register(self):
+        type_ = re.search("^_[a-zA-Z]+\.((_udp)?|(_tcp)?)\.local\.$",
+                          self.mainWindow.registerServicePopUp.typeEdit.text())
+        name = re.search("^[a-zA-Z- 0-9_]+\._[a-zA-Z]+\.((_udp)?|(_tcp)?).local\.$",
+                         self.mainWindow.registerServicePopUp.nameEdit.text())
+        address = re.search("^((25[0-5]|(2[0-4]|1[0-9]|[1-9]|)[0-9])(\.(?!$)|$)){4}$",
+                            self.mainWindow.registerServicePopUp.addressEdit.text())
+        port = re.search("^[0-9]{0,3}$", self.mainWindow.registerServicePopUp.portEdit.text())
+        weight = re.search("^[0-9]{0,3}$", self.mainWindow.registerServicePopUp.weightEdit.text())
+        priority = re.search("^[0-9]{0,3}$", self.mainWindow.registerServicePopUp.priorityEdit.text())
+        ttl = re.search("^[1-9][0-9]{0,4}$", self.mainWindow.registerServicePopUp.ttlEdit.text())
+        server = re.search("^[a-zA-Z- 0-9_]+\.local\.$", self.mainWindow.registerServicePopUp.serverEdit.text())
+        if type_ is None or name is None or address is None or port is None or weight is None \
+                or priority is None or ttl is None or server is None:
+            self.mainWindow.errPopUp.show()
+            self.mainWindow.errPopUp.eroareEdit.setPlainText("\t\tAtentie!\n"
+                                                             "\tNu ati completat un camp sau ati completat un camp gresit!")
+        elif not name.string.endswith(type_.string):
+            self.mainWindow.errPopUp.show()
+            self.mainWindow.errPopUp.eroareEdit.setPlainText("\t\tAtentie!\n"
+                                                             "\tNumele serviciului nu se termina cu '%s'!" % type_)
+        else:
+            info = ServiceInfo(type_=type_.string, name=name.string,
+                               address=socket.inet_aton(address.string), port=int(port.string),
+                               weight=int(weight.string), priority=int(priority.string), properties={}, server=server.string)
+            if self.zeroconf is None:
+                zeroconf = Zeroconf()
+            self.mainWindow.outputDisplay.appendPlainText("Registration of service '%s'" % name.string)
+            zeroconf.register_service(info, ttl=int(ttl.string))
+            self.mainWindow.outputDisplay.appendPlainText("Registration done!\n")
+            self.mainWindow.registerServicePopUp.delete_close()
+            '''
+            try:
+                self.thread = threading.Thread(target=self.kk, args=(info,))
+                self.thread.start()
+            except RuntimeError:
+                print("Eroare la pornirea thread-ului!")
+
+    def kk(self, info):
+        zeroconf = Zeroconf()
+        print("Registration of a service...")
+        zeroconf.register_service(info)
+        try:
+            input("Waiting (press Enter to exit)...")
+        finally:
+            print("\nUnregistering...")
+            zeroconf.unregister_service(info)
+            zeroconf.close()
+            '''
 
 
 if __name__ == '__main__':
