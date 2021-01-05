@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.uic import loadUi
@@ -14,11 +15,13 @@ class MainWindow(QMainWindow):
         print(ui_path)
         loadUi(ui_path, self)
         self.file_path = None
+        self.serviceTypesBox.addItem("None")
         self.registerServicePopUp = RegisterServicePopUp(self)
         self.addServiceButton.clicked.connect(self.registerServicePopUp.show)
         self.connections = Connections(self)
         self.searchAllButton.clicked.connect(self.connections.find_ServiceTypes)
         self.searchSelectedType.clicked.connect(self.connections.search_SelectedType)
+        self.getIPButton.clicked.connect(self.connections.get_IPaddress)
         # self.outputDisplay.appendPlainText("ndsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdsssss")
 
 
@@ -56,9 +59,8 @@ class RegisterServicePopUp(QDialog):
         return "STUDENTI"
 
 
-class MyListener(object):
-    def __init__(self, mainWindow):
-        self.mainWindow = mainWindow
+class MyBrowserListener:
+    def __init__(self):
         self.string = ""
 
     def remove_service(self, zeroconf, type, name):
@@ -71,9 +73,9 @@ class MyListener(object):
         info = zeroconf.get_service_info(type, name)
         if info:
             self.string += ("    Address is %s:%d\n" % (socket.inet_ntoa(info.address),
-                                                     info.port))
+                                                        info.port))
             self.string += ("    Weight is %d,\n    Priority is %d\n" % (info.weight,
-                                                                 info.priority))
+                                                                         info.priority))
             self.string += ("    Server is %s\n" % info.server)
             if info.properties:
                 self.string += "    Properties are\n"
@@ -84,6 +86,24 @@ class MyListener(object):
         self.string += '\n'
 
 
+class MyListenerHNResolver:
+    def __init__(self, hostName):
+        self.string = ""
+        self.hostName = hostName
+
+    def remove_service(self, zeroconf, type, name):
+        pass
+
+    def add_service(self, zeroconf, type, name):
+        info = zeroconf.get_service_info(type, name)
+
+        if info:
+            if self.hostName == name:
+                self.string += ("%s" % (socket.inet_ntoa(info.address)))
+        else:
+            self.string += "    No info!\n"
+
+
 class Connections:
     def __init__(self, mainWindow):
         self.mainWindow = mainWindow
@@ -92,21 +112,39 @@ class Connections:
         service_types = ZeroconfServiceTypes.find(timeout=0.5)
         self.mainWindow.outputDisplay.appendPlainText("Types of services:")
         self.mainWindow.serviceTypesBox.clear()
+        self.mainWindow.serviceTypesBox.addItem("None")
         for j in service_types:
             self.mainWindow.serviceTypesBox.addItem(j)
             self.mainWindow.outputDisplay.appendPlainText("\t%s" % j)
+        self.mainWindow.outputDisplay.appendPlainText("\n")
 
     def search_SelectedType(self):
-
         type_ = self.mainWindow.serviceTypesBox.currentText()
-        if type_ != '':
+        if type_ != "None":
+            self.mainWindow.searchSelectedType.setEnabled(False)
             zeroconf = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Browsing services . . . :")
-            listener = MyListener(self.mainWindow)
-            browser2 = ServiceBrowser(zeroconf, type_, listener)
+            listener = MyBrowserListener()
+            browser = ServiceBrowser(zeroconf, type_, listener)
             time.sleep(3)
             zeroconf.close()
+            browser.cancel()
             self.mainWindow.outputDisplay.appendPlainText(listener.string)
+        self.mainWindow.searchSelectedType.setEnabled(True)
+
+    def get_IPaddress(self):
+        hostName = self.mainWindow.hostName.text()
+        if hostName != "":
+            zeroconf = Zeroconf()
+            self.mainWindow.outputDisplay.appendPlainText("Resolving hostname . . . :")
+            listener = MyListenerHNResolver(hostName)
+            type_ = re.sub("^[^.]+", '', hostName)
+            type_ = type_[1:]
+            browser = ServiceBrowser(zeroconf, type_, listener)
+            time.sleep(3)
+            zeroconf.close()
+            browser.cancel()
+            self.mainWindow.ipAddress.setText(listener.string)
 
 
 if __name__ == '__main__':
