@@ -60,6 +60,12 @@
      <height>25</height>
     </rect>
    </property>
+   <property name="text">
+    <string>_xxxx._udp.local.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
   </widget>
   <widget class="QLineEdit" name="nameEdit">
    <property name="geometry">
@@ -69,6 +75,12 @@
      <width>271</width>
      <height>25</height>
     </rect>
+   </property>
+   <property name="text">
+    <string>Popescu._xxxx._udp.local.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QLineEdit" name="addressEdit">
@@ -80,6 +92,12 @@
      <height>25</height>
     </rect>
    </property>
+   <property name="text">
+    <string>192.0.1.2</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
   </widget>
   <widget class="QLineEdit" name="portEdit">
    <property name="geometry">
@@ -89,6 +107,12 @@
      <width>81</width>
      <height>25</height>
     </rect>
+   </property>
+   <property name="text">
+    <string>666</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QLineEdit" name="weightEdit">
@@ -100,6 +124,12 @@
      <height>25</height>
     </rect>
    </property>
+   <property name="text">
+    <string>0</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
   </widget>
   <widget class="QLineEdit" name="priorityEdit">
    <property name="geometry">
@@ -110,6 +140,12 @@
      <height>25</height>
     </rect>
    </property>
+   <property name="text">
+    <string>0</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
   </widget>
   <widget class="QLineEdit" name="serverEdit">
    <property name="geometry">
@@ -119,6 +155,12 @@
      <width>181</width>
      <height>25</height>
     </rect>
+   </property>
+   <property name="text">
+    <string>pop.local.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QLabel" name="label">
@@ -220,6 +262,12 @@
      <width>81</width>
      <height>25</height>
     </rect>
+   </property>
+   <property name="text">
+    <string>7000</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QLabel" name="label_8">
