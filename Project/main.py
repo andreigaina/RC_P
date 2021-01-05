@@ -84,7 +84,29 @@ class MyListener(object):
         self.string += '\n'
 
 
+class Connections:
+    def __init__(self, mainWindow):
+        self.mainWindow = mainWindow
 
+    def find_ServiceTypes(self):
+        service_types = ZeroconfServiceTypes.find(timeout=0.5)
+        self.mainWindow.outputDisplay.appendPlainText("Types of services:")
+        self.mainWindow.serviceTypesBox.clear()
+        for j in service_types:
+            self.mainWindow.serviceTypesBox.addItem(j)
+            self.mainWindow.outputDisplay.appendPlainText("\t%s" % j)
+
+    def search_SelectedType(self):
+
+        type_ = self.mainWindow.serviceTypesBox.currentText()
+        if type_ != '':
+            zeroconf = Zeroconf()
+            self.mainWindow.outputDisplay.appendPlainText("Browsing services . . . :")
+            listener = MyListener(self.mainWindow)
+            browser2 = ServiceBrowser(zeroconf, type_, listener)
+            time.sleep(3)
+            zeroconf.close()
+            self.mainWindow.outputDisplay.appendPlainText(listener.string)
 
 
 if __name__ == '__main__':
