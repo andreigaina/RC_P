@@ -9,7 +9,7 @@ from queryTypes import *
 
 
 class Zeroconf:
-    def __init__(self, interfaces=InterfaceChoice.Default):
+    def __init__(self, interfaces=InterfaceChoice.All):
         queryTypes._GLOBAL_DONE = False
         self._listen_socket = new_socket()
         interfaces = normalize_interface_choice(interfaces, socket.AF_INET)
@@ -296,11 +296,11 @@ if __name__ == '__main__':
                         desc, "ix.local.")
     zeroconf = Zeroconf()
     print("Registration of a service...")
-    zeroconf.register_service(info)
+    #zeroconf.register_service(info)
     zeroconf.register_service(info2)
     try:
         input("Waiting (press Enter to exit)...")
     finally:
         print("\nUnregistering...")
-        zeroconf.unregister_service(info)
+        zeroconf.unregister_service(info2)
         zeroconf.close()

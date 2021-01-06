@@ -24,6 +24,7 @@ class MainWindow(QMainWindow):
         self.searchSelectedType.clicked.connect(self.connections.search_SelectedType)
         self.getIPButton.clicked.connect(self.connections.get_IPaddress)
         self.registerServicePopUp.registerButton.clicked.connect(self.connections.verify_register)
+        self.removeServiceButton.clicked.connect(self.connections.remove_Service)
 
 
 class RegisterServicePopUp(QDialog):
@@ -125,6 +126,7 @@ class Connections:
     def __init__(self, mainWindow):
         self.mainWindow = mainWindow
         self.zeroconf = None
+        self.serv_dict = {}
 
     def find_ServiceTypes(self):
         service_types = ZeroconfServiceTypes.find(timeout=0.5)
@@ -145,7 +147,7 @@ class Connections:
             listener = MyBrowserListener()
             browser = ServiceBrowser(zeroconf, type_, listener)
             time.sleep(3)
-            #zeroconf.close()
+            zeroconf.close()
             #browser.cancel()
             self.mainWindow.outputDisplay.appendPlainText(listener.string)
         else:
@@ -157,15 +159,15 @@ class Connections:
     def get_IPaddress(self):
         hostName = self.mainWindow.hostName.text()
         if hostName != "":
-            if self.zeroconf is None:
-                zeroconf = Zeroconf()
+            #if self.zeroconf is None:
+            zeroconf = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Resolving hostname . . . :")
             listener = MyListenerHNResolver(hostName)
             type_ = re.sub("^[^.]+", '', hostName)
             type_ = type_[1:]
             browser = ServiceBrowser(zeroconf, type_, listener)
             time.sleep(3)
-            #zeroconf.close()
+            zeroconf.close()
             #browser.cancel()
             self.mainWindow.ipAddress.setText(listener.string)
             self.mainWindow.outputDisplay.appendPlainText("\t"+listener.string)
@@ -200,11 +202,15 @@ class Connections:
                                address=socket.inet_aton(address.string), port=int(port.string),
                                weight=int(weight.string), priority=int(priority.string), properties={}, server=server.string)
             if self.zeroconf is None:
-                zeroconf = Zeroconf()
+                self.zeroconf = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Registration of service '%s'" % name.string)
-            zeroconf.register_service(info, ttl=int(ttl.string))
+            self.zeroconf.register_service(info, ttl=int(ttl.string))
             self.mainWindow.outputDisplay.appendPlainText("Registration done!\n")
             self.mainWindow.registerServicePopUp.delete_close()
+            index = self.mainWindow.servicesBox.findText(name.string)
+            if index < 0:
+                self.mainWindow.servicesBox.addItem(name.string)
+                self.serv_dict[name.string] = info
             '''
             try:
                 self.thread = threading.Thread(target=self.kk, args=(info,))
@@ -223,6 +229,19 @@ class Connections:
             zeroconf.unregister_service(info)
             zeroconf.close()
             '''
+    def remove_Service(self):
+        index = self.mainWindow.servicesBox.currentIndex()
+        if index != -1:
+            name = self.mainWindow.servicesBox.currentText()
+            self.mainWindow.outputDisplay.appendPlainText("\nUnregistering of service '%s'" % name.string)
+            self.mainWindow.servicesBox.removeItem(index)
+            self.zeroconf.unregister_service(self.serv_dict[name])
+            self.zeroconf.close()
+            self.mainWindow.outputDisplay.appendPlainText("Unregister done!")
+        else:
+            self.mainWindow.errPopUp.show()
+            self.mainWindow.errPopUp.eroareEdit.setPlainText("\t\tAtentie!\n"
+                                                             "\tNu este inregistrat niciun serviciu.")
 
 
 if __name__ == '__main__':
