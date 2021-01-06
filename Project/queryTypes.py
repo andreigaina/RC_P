@@ -133,7 +133,7 @@ class DNSRecord(DNSEntry):
 
     def suppressed_by_answer(self, other) -> bool:
         """Returneaza true daca o alta inregistrare are acelasi nume, acelasi tip, aceeasi clasa si TTL>self.ttl/2 """
-        return self == other and other > (self.ttl / 2)
+        return self == other and other.ttl > (self.ttl / 2)
 
     def suppressed(self, msg) -> bool:
         """Returneaza true daca un raspuns din oricare mesaj poate fi indeajuns pentru informatiile mentinute in

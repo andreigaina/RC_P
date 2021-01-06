@@ -1,3 +1,5 @@
+import ipaddress
+from typing import cast
 
 from listener import *
 from dnscache import *
@@ -6,6 +8,11 @@ from wrapper import *
 from serviceInfo import *
 from serviceBrowser import *
 from queryTypes import *
+
+
+def can_send_to(sock: socket.socket, address: str) -> bool:
+    addr = ipaddress.ip_address(address)
+    return cast(bool, addr.version == 6 if sock.family == socket.AF_INET6 else addr.version == 4)
 
 
 class Zeroconf:
@@ -63,7 +70,15 @@ class Zeroconf:
     def send(self, out_, addr=queryTypes._MDNS_ADDR, port=queryTypes._MDNS_PORT):
         packet = out_.packet()
         for socket_ in self._respond_sockets:
-            bytes_sent = socket_.sendto(packet,  (addr, port))
+            if queryTypes._GLOBAL_DONE:
+                return
+            if addr is None:
+                real_addr = queryTypes._MDNS_ADDR
+            elif not can_send_to(socket_, addr):
+                continue
+            else:
+                real_addr = addr
+            bytes_sent = socket_.sendto(packet, 0, (real_addr, port))
             # print(len(packet))
             if bytes_sent != len(packet):
                 raise Exception(
@@ -287,7 +302,7 @@ class Zeroconf:
 if __name__ == '__main__':
     desc = {'path': '/~home/'}
     info = ServiceInfo("_xxxx._udp.local.",
-                       "Popescu._xxxx._udp.local.",
+                       "Melinte._xxxx._udp.local.",
                        socket.inet_aton("192.0.1.2"), 666, 4, 2,
                        desc, "pop.local.")
     info2 = ServiceInfo("_http._tcp.local.",
@@ -296,7 +311,7 @@ if __name__ == '__main__':
                         desc, "ix.local.")
     zeroconf = Zeroconf()
     print("Registration of a service...")
-    #zeroconf.register_service(info)
+    zeroconf.register_service(info)
     zeroconf.register_service(info2)
     try:
         input("Waiting (press Enter to exit)...")

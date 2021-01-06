@@ -38,6 +38,7 @@ class RegisterServicePopUp(QDialog):
         self.cancelButton.clicked.connect(self.delete_close)
 
     def delete_close(self):
+        '''
         self.typeEdit.clear()
         self.nameEdit.clear()
         self.addressEdit.clear()
@@ -46,6 +47,7 @@ class RegisterServicePopUp(QDialog):
         self.priorityEdit.clear()
         self.ttlEdit.clear()
         self.serverEdit.clear()
+        '''
         self.close()
 
     @staticmethod
@@ -126,10 +128,13 @@ class Connections:
     def __init__(self, mainWindow):
         self.mainWindow = mainWindow
         self.zeroconf = None
+        self.browser = None
         self.serv_dict = {}
 
     def find_ServiceTypes(self):
-        service_types = ZeroconfServiceTypes.find(timeout=0.5)
+        if self.zeroconf is None:
+            self.zeroconf = Zeroconf()
+        service_types = ZeroconfServiceTypes.find(zc=self.zeroconf, timeout=0.5)
         self.mainWindow.outputDisplay.appendPlainText("Types of services:")
         self.mainWindow.serviceTypesBox.clear()
         self.mainWindow.serviceTypesBox.addItem("None")
@@ -141,13 +146,15 @@ class Connections:
     def search_SelectedType(self):
         type_ = self.mainWindow.serviceTypesBox.currentText()
         if type_ != "None":
-
+            #if self.zeroconf is None:
+            #    self.zeroconf = Zeroconf()
             zeroconf = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Browsing services . . . :")
             listener = MyBrowserListener()
-            browser = ServiceBrowser(zeroconf, type_, listener)
+            if self.browser is None:
+                self.browser = ServiceBrowser(zeroconf, type_, listener)
             time.sleep(3)
-            zeroconf.close()
+            #zeroconf.close()
             #browser.cancel()
             self.mainWindow.outputDisplay.appendPlainText(listener.string)
         else:
@@ -165,6 +172,7 @@ class Connections:
             listener = MyListenerHNResolver(hostName)
             type_ = re.sub("^[^.]+", '', hostName)
             type_ = type_[1:]
+
             browser = ServiceBrowser(zeroconf, type_, listener)
             time.sleep(3)
             zeroconf.close()
@@ -233,10 +241,10 @@ class Connections:
         index = self.mainWindow.servicesBox.currentIndex()
         if index != -1:
             name = self.mainWindow.servicesBox.currentText()
-            self.mainWindow.outputDisplay.appendPlainText("\nUnregistering of service '%s'" % name.string)
+            self.mainWindow.outputDisplay.appendPlainText("\nUnregistering of service '%s'" % name)
             self.mainWindow.servicesBox.removeItem(index)
             self.zeroconf.unregister_service(self.serv_dict[name])
-            self.zeroconf.close()
+            #self.zeroconf.close()
             self.mainWindow.outputDisplay.appendPlainText("Unregister done!")
         else:
             self.mainWindow.errPopUp.show()
