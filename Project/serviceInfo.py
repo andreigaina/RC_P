@@ -3,6 +3,7 @@ from six import text_type, indexbytes
 import queryTypes
 from queryTypes import *
 
+
 class ServiceInfo:
     def __init__(self, type_, name: str, address=None, port=None, weight=0, priority=0, properties=None, server=None):
         if not name.endswith(type_):

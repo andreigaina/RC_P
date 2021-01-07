@@ -34,9 +34,9 @@ if __name__ == '__main__':
     zeroconf = Zeroconf()
     print("Browsing services...")
     listener = MyListener()
-    # browser = ServiceBrowser(zeroconf, "_http._tcp.local.", listener)
+    browser = ServiceBrowser(zeroconf, "_http._tcp.local.", listener)
     listener1 = MyListener()
-    browser2 = ServiceBrowser(zeroconf, "_xxxx._udp.local.", listener1)
+    #browser2 = ServiceBrowser(zeroconf, "_xxxx._udp.local.", listener1)
     try:
         input("Waiting (press Enter to exit)...\n\n")
     finally:

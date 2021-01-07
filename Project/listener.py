@@ -24,9 +24,9 @@ class Listener:
             if port == queryTypes._MDNS_PORT:
                 self.zeroconf.handle_query(msg, queryTypes._MDNS_ADDR, queryTypes._MDNS_PORT)
             '''
-            elif port == _DNS_PORT:
+            elif port == queryTypes._DNS_PORT:
                 self.zeroconf.handle_query(msg, addr, port)
-                self.zeroconf.handle_query(msg, _MDNS_ADDR, _MDNS_PORT)
+                self.zeroconf.handle_query(msg, queryTypes._MDNS_ADDR, queryTypes._MDNS_PORT)
             '''
         else:
             self.zeroconf.handle_response(msg)

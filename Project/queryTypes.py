@@ -191,7 +191,7 @@ class DNSAddress(DNSRecord):
     def __repr__(self):
         """Reprezentare de tip string"""
         try:
-            return self.to_string(socket.inet_aton(self.address))  # 32 bit packed binary format
+            return self.to_string(socket.inet_ntoa(self.address))  # 32 bit packed binary format
         except Exception as e:
             log.exception('Unknown error: %r', e)
             return self.to_string(str(self.address))

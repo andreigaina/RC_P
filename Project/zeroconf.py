@@ -16,19 +16,19 @@ def can_send_to(sock: socket.socket, address: str) -> bool:
 
 
 class Zeroconf:
-    def __init__(self, interfaces=InterfaceChoice.All):
+    def __init__(self, interfaces=InterfaceChoice.Default):
         queryTypes._GLOBAL_DONE = False
         self._listen_socket = new_socket()
         interfaces = normalize_interface_choice(interfaces, socket.AF_INET)
 
         self._respond_sockets = []
 
-        for i in interfaces:
+        for j in interfaces:
             self._listen_socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
-                                           socket.inet_aton(queryTypes._MDNS_ADDR) + socket.inet_aton(i))
+                                           socket.inet_aton(queryTypes._MDNS_ADDR) + socket.inet_aton(j))
 
             respond_socket = new_socket()
-            respond_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(i))
+            respond_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(j))
             self._respond_sockets.append(respond_socket)
 
         self.listeners = []
@@ -89,10 +89,11 @@ class Zeroconf:
         instance_name = info.name[:-len(info.type_) - 1]
         now = current_time_millis()
         next_time = now
-        i = 0
-        while i < 3:
+        j = 0
+        while j < 3:
             for record in self.cache.entries_with_name(info.type_):
                 if record.type_ == queryTypes._TYPE_PTR and not record.is_expired(now) and record.alias == info.name:
+
                     if not allow_name_change:
                         raise Exception("NonUniqueNameException")
                     info.name = '%s-%s.%s' % (instance_name, next_instance_number, info.type_)
@@ -111,7 +112,7 @@ class Zeroconf:
             out.add_authoritative_answer(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN,
                                                     queryTypes._DNS_TTL, info.name))
             self.send(out)
-            i += 1
+            j += 1
             next_time += queryTypes._CHECK_TIME
 
     def register_service(self, info, ttl=queryTypes._DNS_TTL):
@@ -123,22 +124,22 @@ class Zeroconf:
             self.servicetypes[info.type_] = 1
         now = current_time_millis()
         next_time = now
-        i = 0
-        while i < 3:
+        j = 0
+        while j < 3:
             if now < next_time:
                 self.wait(next_time - now)
                 now = current_time_millis()
                 continue
-            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
-            out.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, ttl, info.name), 0)
-            out.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, ttl, info.priority,
-                                              info.weight, info.port, info.server), 0)
-            out.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, ttl, info.text), 0)
+            out_ = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+            out_.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, ttl, info.name), 0)
+            out_.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, ttl, info.priority,
+                                               info.weight, info.port, info.server), 0)
+            out_.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, ttl, info.text), 0)
             if info.address:
-                out.add_answer_at_time(DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, ttl, info.address), 0)
+                out_.add_answer_at_time(DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, ttl, info.address), 0)
 
-            self.send(out)
-            i += 1
+            self.send(out_)
+            j += 1
             next_time += queryTypes._REGISTER_TIME
 
     def unregister_service(self, info):
@@ -152,44 +153,44 @@ class Zeroconf:
             log.exception('Unknown error:%r', e)
         now = current_time_millis()
         next_time = now
-        i = 0
-        while i < 3:
+        j = 0
+        while j < 3:
             if now < next_time:
                 self.wait(next_time - now)
                 now = current_time_millis()
                 continue
-            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
-            out.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, 0, info.name), 0)
-            out.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, 0, info.priority,
-                                              info.weight, info.port, info.server), 0)
-            out.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, 0, info.text), 0)
+            out_ = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+            out_.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, 0, info.name), 0)
+            out_.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, 0, info.priority,
+                                               info.weight, info.port, info.server), 0)
+            out_.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, 0, info.text), 0)
             if info.address:
-                out.add_answer_at_time(DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, 0, info.address), 0)
-            self.send(out)
-            i += 1
+                out_.add_answer_at_time(DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, 0, info.address), 0)
+            self.send(out_)
+            j += 1
             next_time += queryTypes._UNREGISTER_TIME
 
     def unregister_all_services(self):
         if len(self.services) > 0:
             now = current_time_millis()
             next_time = now
-            i = 0
-            while i < 3:
+            j = 0
+            while j < 3:
                 if now < next_time:
                     self.wait(next_time - now)
                     now = current_time_millis()
                     continue
-                out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+                out_ = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
                 for info in self.services.values():
-                    out.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, 0, info.name), 0)
-                    out.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, 0, info.priority,
-                                                      info.weight, info.port, info.server), 0)
-                    out.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, 0, info.text), 0)
+                    out_.add_answer_at_time(DNSPointer(info.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN, 0, info.name), 0)
+                    out_.add_answer_at_time(DNSService(info.name, queryTypes._TYPE_SRV, queryTypes._CLASS_IN, 0, info.priority,
+                                                       info.weight, info.port, info.server), 0)
+                    out_.add_answer_at_time(DNSText(info.name, queryTypes._TYPE_TXT, queryTypes._CLASS_IN, 0, info.text), 0)
                     if info.address:
-                        out.add_answer_at_time(
+                        out_.add_answer_at_time(
                             DNSAddress(info.server, queryTypes._TYPE_A, queryTypes._CLASS_IN, 0, info.address), 0)
-                self.send(out)
-                i += 1
+                self.send(out_)
+                j += 1
                 next_time += queryTypes._UNREGISTER_TIME
 
     def update_record(self, now, record):
@@ -230,38 +231,38 @@ class Zeroconf:
             self.update_record(now, record)
 
     def handle_query(self, msg, addr, port):
-        out = None
+        out_ = None
         if port != queryTypes._MDNS_PORT:
-            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA, False)
+            out_ = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA, False)
             for question in msg.questions:
-                out.add_question(question)
+                out_.add_question(question)
 
         for question in msg.questions:
             if question.type_ == queryTypes._TYPE_PTR:
                 if question.name == "_services._dns-sd._udp.local.":
                     for serv_type in self.servicetypes.keys():
-                        if out is None:
-                            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
-                        out.add_answer(msg,
-                                       DNSPointer("_services._dns-sd._udp.local.",
+                        if out_ is None:
+                            out_ = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+                        out_.add_answer(msg,
+                                        DNSPointer("_services._dns-sd._udp.local.",
                                                   queryTypes._TYPE_PTR, queryTypes._CLASS_IN, queryTypes._DNS_TTL, serv_type))
 
                 for service in self.services.values():
                     if question.name == service.type_:
-                        if out is None:
-                            out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
-                        out.add_answer(msg,
-                                       DNSPointer(service.type_,
+                        if out_ is None:
+                            out_ = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+                        out_.add_answer(msg,
+                                        DNSPointer(service.type_,
                                                   queryTypes._TYPE_PTR, queryTypes._CLASS_IN, queryTypes._DNS_TTL, service.name))
             else:
                 try:
-                    if out is None:
-                        out = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
+                    if out_ is None:
+                        out_ = DNSOutgoing(queryTypes._FLAGS_QR_RESPONSE | queryTypes._FLAGS_AA)
                     if question.type_ in (queryTypes._TYPE_A, queryTypes._TYPE_ANY):
                         for service in self.services.values():
                             if service.server == question.name.lower():
-                                out.add_answer(msg,
-                                               DNSAddress(question.name,
+                                out_.add_answer(msg,
+                                                DNSAddress(question.name,
                                                           queryTypes._TYPE_A, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
                                                           queryTypes._DNS_TTL,
                                                           service.address))
@@ -270,24 +271,24 @@ class Zeroconf:
                         continue
 
                     if question.type_ in (queryTypes._TYPE_SRV, queryTypes._TYPE_ANY):
-                        out.add_answer(msg, DNSService(question.name,
-                                                       queryTypes._TYPE_SRV, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
-                                                       queryTypes._DNS_TTL, service.priority, service.weight,
-                                                       service.port, service.server))
+                        out_.add_answer(msg, DNSService(question.name,
+                                                        queryTypes._TYPE_SRV, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
+                                                        queryTypes._DNS_TTL, service.priority, service.weight,
+                                                        service.port, service.server))
                     if question.type_ in (queryTypes._TYPE_TXT, queryTypes._TYPE_ANY):
-                        out.add_answer(msg, DNSText(question.name,
-                                                    queryTypes._TYPE_TXT, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
-                                                    queryTypes._DNS_TTL, service.text))
+                        out_.add_answer(msg, DNSText(question.name,
+                                                     queryTypes._TYPE_TXT, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
+                                                     queryTypes._DNS_TTL, service.text))
                     if question.type_ == queryTypes._TYPE_SRV:
-                        out.add_additional_answer(DNSAddress(service.server,
-                                                             queryTypes._TYPE_A, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
-                                                             queryTypes._DNS_TTL, service.address))
+                        out_.add_additional_answer(DNSAddress(service.server,
+                                                              queryTypes._TYPE_A, queryTypes._CLASS_IN | queryTypes._CLASS_UNIQUE,
+                                                              queryTypes._DNS_TTL, service.address))
 
                 except Exception as e:
                     log.exception('Unknown error: %r', e)
-        if out is not None and out.answers:
-            out.id = msg.id
-            self.send(out, addr, port)
+        if out_ is not None and out_.answers:
+            out_.id = msg.id
+            self.send(out_, addr, port)
 
     def close(self):
         if not queryTypes._GLOBAL_DONE:

@@ -26,6 +26,10 @@ class MainWindow(QMainWindow):
         self.registerServicePopUp.registerButton.clicked.connect(self.connections.verify_register)
         self.removeServiceButton.clicked.connect(self.connections.remove_Service)
 
+    def closeEvent(self, event):
+        self.connections.closeAll()
+        event.accept()
+
 
 class RegisterServicePopUp(QDialog):
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +42,6 @@ class RegisterServicePopUp(QDialog):
         self.cancelButton.clicked.connect(self.delete_close)
 
     def delete_close(self):
-        '''
         self.typeEdit.clear()
         self.nameEdit.clear()
         self.addressEdit.clear()
@@ -47,7 +50,6 @@ class RegisterServicePopUp(QDialog):
         self.priorityEdit.clear()
         self.ttlEdit.clear()
         self.serverEdit.clear()
-        '''
         self.close()
 
     @staticmethod
@@ -58,6 +60,10 @@ class RegisterServicePopUp(QDialog):
             if method:
                 return obj.isSignalConnected(method)
         return False
+
+    def closeEvent(self, event):
+        self.delete_close()
+        event.accept()
 
 
 class EroarePopUp(QDialog):
@@ -116,8 +122,6 @@ class MyListenerHNResolver:
     def add_service(self, zeroconf, type, name):
         info = zeroconf.get_service_info(type, name)
         if info:
-            print(self.hostName)
-            print(name)
             if self.hostName == name:
                 self.string += ("%s" % (socket.inet_ntoa(info.address)))
         else:
@@ -128,13 +132,14 @@ class Connections:
     def __init__(self, mainWindow):
         self.mainWindow = mainWindow
         self.zeroconf = None
+        self.zeroconf2 = None
         self.browser = None
         self.serv_dict = {}
 
     def find_ServiceTypes(self):
-        if self.zeroconf is None:
-            self.zeroconf = Zeroconf()
-        service_types = ZeroconfServiceTypes.find(zc=self.zeroconf, timeout=0.5)
+        if self.zeroconf2 is None:
+            self.zeroconf2 = Zeroconf()
+        service_types = ZeroconfServiceTypes.find(zc=self.zeroconf2, timeout=0.5)
         self.mainWindow.outputDisplay.appendPlainText("Types of services:")
         self.mainWindow.serviceTypesBox.clear()
         self.mainWindow.serviceTypesBox.addItem("None")
@@ -146,37 +151,32 @@ class Connections:
     def search_SelectedType(self):
         type_ = self.mainWindow.serviceTypesBox.currentText()
         if type_ != "None":
-            #if self.zeroconf is None:
-            #    self.zeroconf = Zeroconf()
-            zeroconf = Zeroconf()
+            if self.zeroconf2 is None:
+                self.zeroconf2 = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Browsing services . . . :")
             listener = MyBrowserListener()
-            if self.browser is None:
-                self.browser = ServiceBrowser(zeroconf, type_, listener)
+            browser = ServiceBrowser(self.zeroconf2, type_, listener)
             time.sleep(3)
-            #zeroconf.close()
-            #browser.cancel()
+            browser.cancel()
             self.mainWindow.outputDisplay.appendPlainText(listener.string)
         else:
             self.mainWindow.errPopUp.show()
             self.mainWindow.errPopUp.eroareEdit.setPlainText("\t\tAtentie!\n"
                                                              "\tNu ati selectat un tip de serviciu.")
-        # self.mainWindow.searchSelectedType.setEnabled(True)
 
     def get_IPaddress(self):
         hostName = self.mainWindow.hostName.text()
         if hostName != "":
-            #if self.zeroconf is None:
-            zeroconf = Zeroconf()
+            if self.zeroconf2 is None:
+                self.zeroconf2 = Zeroconf()
             self.mainWindow.outputDisplay.appendPlainText("Resolving hostname . . . :")
             listener = MyListenerHNResolver(hostName)
             type_ = re.sub("^[^.]+", '', hostName)
             type_ = type_[1:]
 
-            browser = ServiceBrowser(zeroconf, type_, listener)
+            browser = ServiceBrowser(self.zeroconf2, type_, listener)
             time.sleep(3)
-            zeroconf.close()
-            #browser.cancel()
+            browser.cancel()
             self.mainWindow.ipAddress.setText(listener.string)
             self.mainWindow.outputDisplay.appendPlainText("\t"+listener.string)
         else:
@@ -219,24 +219,7 @@ class Connections:
             if index < 0:
                 self.mainWindow.servicesBox.addItem(name.string)
                 self.serv_dict[name.string] = info
-            '''
-            try:
-                self.thread = threading.Thread(target=self.kk, args=(info,))
-                self.thread.start()
-            except RuntimeError:
-                print("Eroare la pornirea thread-ului!")
 
-    def kk(self, info):
-        zeroconf = Zeroconf()
-        print("Registration of a service...")
-        zeroconf.register_service(info)
-        try:
-            input("Waiting (press Enter to exit)...")
-        finally:
-            print("\nUnregistering...")
-            zeroconf.unregister_service(info)
-            zeroconf.close()
-            '''
     def remove_Service(self):
         index = self.mainWindow.servicesBox.currentIndex()
         if index != -1:
@@ -244,12 +227,19 @@ class Connections:
             self.mainWindow.outputDisplay.appendPlainText("\nUnregistering of service '%s'" % name)
             self.mainWindow.servicesBox.removeItem(index)
             self.zeroconf.unregister_service(self.serv_dict[name])
-            #self.zeroconf.close()
+            self.zeroconf.close()
             self.mainWindow.outputDisplay.appendPlainText("Unregister done!")
+            self.zeroconf = None
         else:
             self.mainWindow.errPopUp.show()
             self.mainWindow.errPopUp.eroareEdit.setPlainText("\t\tAtentie!\n"
                                                              "\tNu este inregistrat niciun serviciu.")
+
+    def closeAll(self):
+        if self.zeroconf is not None:
+            self.zeroconf.close()
+        if self.zeroconf2 is not None:
+            self.zeroconf2.close()
 
 
 if __name__ == '__main__':

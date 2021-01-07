@@ -18,7 +18,7 @@ class ServiceBrowser(threading.Thread):
         self.zeroconf.add_listener(self, DNSQuestion(self.type_, queryTypes._TYPE_PTR, queryTypes._CLASS_IN))
         self.start()
 
-    def update_record(self, zc, now, record):
+    def update_record(self, zeroconf, now, record):
         if record.type_ == queryTypes._TYPE_PTR and record.name == self.type_:
             expired = record.is_expired(now)
             try:

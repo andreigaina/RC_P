@@ -25,7 +25,7 @@ class ZeroconfServiceTypes:
         browser = ServiceBrowser(local_zc, '_services._dns-sd._udp.local.', listener=listener)
         # wait for responses
         time.sleep(timeout)
-        # close
+        #close
         if zc is None:
             local_zc.close()
         else:
