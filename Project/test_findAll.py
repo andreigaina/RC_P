@@ -2,7 +2,7 @@ import socket
 
 from ServiceTypes_find import ZeroconfServiceTypes
 from serviceInfo import ServiceInfo
-from zeroconf import Zeroconf
+from zeroconf import *
 
 desc = {'path': '/~paulsm/'}
 
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     zeroconf = Zeroconf()
     print("Registration of a service...")
     zeroconf.register_service(info)
-    service_types = ZeroconfServiceTypes.find(interfaces=['0.0.0.0'], timeout=0.5)
+    service_types = ZeroconfServiceTypes.find(timeout=0.5)
     print(service_types)
     try:
        input("Waiting (press Enter to exit)...")
